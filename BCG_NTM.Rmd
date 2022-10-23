@@ -1,0 +1,140 @@
+---
+title: "Mucosal Exposure to non-tuberculous mycobacteria elicits B-cell mediated immunity
+  against pulmonary tuberculosis"
+author: "Taru Dutt"
+date: "2022-10-23"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error = FALSE, message = FALSE, warning = FALSE)
+```
+
+# About experiment
+
+## Effect of non-tuberculous Mycobacteria on the protective efficacy of BCG 
+
+### Description of the data
+
+Tuberculosis (TB) continues to increase worldwide despite vigorous attempts to control it. Bacillus Calmette-Guerin (BCG) is the only licensed vaccine currently available for protection against TB, however, its efficacy is highly variable between countries. It has been hypothesized that BCG’s variable protection is due, among others, to immunological interference by environmental, non-tuberculous mycobacteria (NTM). However, a definitive mechanism has not been identified so far.  Considering the foregoing, We developed a murine model closely resembling the natural history of human exposure to different mycobacterial species, including: 1) BCG vaccination at an early age; 2) exposure to viable NTMs (Mycobacterium avium subsp. avium) via the oral route and 3) maintaining continuous NTM exposure even after TB infection, as occurs in endemic places.  
+
+The presented data has six groups:
+
+1. Saline control: Negative control + Mycobacterium tuberculosis (Mtb) infection
+2. NTM 1X10^5CFU/mL: NTM 1X10^5CFU/mL via drinking water + Mtb infection
+3. BCG: BCG vaccination without NTM + Mtb infection
+5: BCG + NTM 1X10^5CFU/mL: BCG vaccination + NTM 1X10^5 CFU/mL via drinking water + Mtb infection
+
+## About the technique
+
+We have performed 10x spatial visium transciptomics on formaldehyde-fixed paraffin embedded (FFPE) lung tissues at day 120 post Mtb infection. We have seen lymphoid follicles in lungs of mice vaccinated with BCG, exposed with high concentration of NTM and challenged with Mtb. These lymphoid follicles are correlated with decreased Mtb bacterial burden in the lungs and also with increased B cells and anti-Mtb cell lysate IgA aand IgG antibodies. Therefore, to further evaluate the protection mechanisms, we have performed spatial transcriptomics o lung tissues. 
+
+# Now let's start data analysis
+
+## install packages
+
+```{r}
+#remove.packages("Seurat")
+#install.packages('remotes')
+#remotes::install_version("Seurat", version = "4.0.5")
+#BiocManager::install("clusterProfiler")
+#install.packages("enrichplot")
+#installed.packages("patchwork")
+#BiocManager::install("SingleR")
+#BiocManager::install("celldex")
+#BiocManager::install("ensembldb")
+#BiocManager::install('limma')
+#BiocManager::install("DESeq2")
+#organism = "org.Mm.eg.db"
+#BiocManager::install(organism)
+#BiocManager::install("pathview")
+#install.packages("Seurat")
+#install.packages("remotes")
+#BiocManager::install("rhdf5")
+#install.packages("hdf5r")
+#BiocManager::install("NeuCA")
+#install.packages('devtools')
+#install_github("ggjlab/scMCA")
+#install.packages("pheatmap")
+#BiocManager::install("scater")
+#devtools::install_github("sqjin/CellChat")
+#BiocManager::install("ComplexHeatmap")
+```
+
+## Load libraries
+
+In this step, we are loading the libraries which are required for analysis and plotting of the data.
+
+
+```{r}
+library(Seurat)
+library(devtools)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(clusterProfiler)
+library(enrichplot)
+# we use ggplot2 to add x axis labels (ex: ridgeplot)
+library(stringr)
+library(celldex)
+library(ensembldb)
+library(SingleR)
+library(DESeq2)
+library(org.Mm.eg.db)
+library(rhdf5)
+library(hdf5r)
+library(pheatmap)
+library(ComplexHeatmap)
+library(CellChat)
+library(patchwork)
+options(stringsAsFactors = FALSE)
+library(NMF)
+library(ggalluvial)
+
+```
+
+## load data for mouse 1 and mouse 2
+
+```{r}
+# Mouse 1
+ntm_bcg_mouse_1 <- "/Volumes/Seagate_4TB/spatial_ntm_samples/demultiplexed/ntm_bcg_sample_round_one/outs/"
+
+list.files(ntm_bcg_mouse_1)
+
+ntm_bcg_mouse_1_data <- Load10X_Spatial(
+  ntm_bcg_mouse_1,
+  filename = "filtered_feature_bc_matrix.h5",
+  assay = "spatial",
+  slice = "ntmbcg",
+  filter.matrix = TRUE,
+  to.upper = FALSE,
+  image = NULL)
+
+# Mouse 2
+ntm_bcg_mouse_2 <- "/Volumes/Seagate_4TB/spatial_ntm_samples/demultiplexed/ntm_bcg_sample_round_two/outs/"
+
+list.files(ntm_bcg_mouse_2)
+
+ntm_bcg_mouse_2_data <- Load10X_Spatial(
+ ntm_bcg_mouse_2,
+  filename = "filtered_feature_bc_matrix.h5",
+  assay = "spatial",
+  slice = "ntmbcg",
+  filter.matrix = TRUE,
+  to.upper = FALSE,
+  image = NULL)
+
+
+```
+
+
+## data preprocessing
+
+```{r}
+# Mouse 1
+ntm_bcg_mouse_1_data <- SCTransform(ntm_bcg_mouse_1_data, assay = "spatial", verbose = FALSE)
+
+# Mouse 2
+ntm_bcg_mouse_2_data <- SCTransform(ntm_bcg_mouse_2_data, assay = "spatial", verbose = FALSE)
+```
