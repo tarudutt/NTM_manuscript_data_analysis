@@ -1,0 +1,802 @@
+---
+title: "Gene set enrichment"
+author: "Taru Dutt"
+date: "3/3/2022"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## install packages
+
+```{r}
+#BiocManager::install("clusterProfiler")
+#install.packages("enrichplot")
+#installed.packages("patchwork")
+#BiocManager::install("SingleR")
+#BiocManager::install("celldex")
+#BiocManager::install("ensembldb")
+#BiocManager::install('limma')
+#BiocManager::install("DESeq2")
+#organism = "org.Mm.eg.db"
+#BiocManager::install(organism)
+#BiocManager::install("pathview")
+#install.packages("Seurat")
+#install.packages("remotes")
+#remotes::install_github("satijalab/seurat")
+#BiocManager::install("rhdf5")
+#install.packages("hdf5r")
+BiocManager::install("NeuCA")
+install.packages('devtools')
+library(devtools)
+install_github("ggjlab/scMCA")
+install.packages("pheatmap")
+BiocManager::install("scater")
+devtools::install_github("sqjin/CellChat")
+BiocManager::install("ComplexHeatmap")
+install.packages('remotes')
+remotes::install_github(repo = 'satijalab/seurat', ref = 'develop')
+library(Seurat)
+```
+
+
+## Load libraries
+
+In this step, we are loading the libraries which are required for analysis and plotting of the data.
+
+
+```{r}
+library(Seurat)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(clusterProfiler)
+library(enrichplot)
+library(clusterProfiler)
+library(enrichplot)
+# we use ggplot2 to add x axis labels (ex: ridgeplot)
+library(stringr)
+library(celldex)
+library(ensembldb)
+library(SingleR)
+library(limma)
+library(DESeq2)
+library(org.Mm.eg.db)
+library(rhdf5)
+library(hdf5r)
+library(pheatmap)
+library(ComplexHeatmap)
+library(CellChat)
+library(patchwork)
+options(stringsAsFactors = FALSE)
+
+```
+
+
+## load data
+
+## Saline group
+
+```{r}
+# Mouse 1
+saline_mouse_1 <- "/Volumes/Seagate_4TB/spatial_ntm_samples/demultiplexed/Saline_sample_round_one/outs/"
+
+list.files(saline_mouse_1)
+
+saline_mouse_1_data <- Load10X_Spatial(
+  saline_mouse_1,
+  filename = "filtered_feature_bc_matrix.h5",
+  assay = "spatial",
+  slice = "saline",
+  filter.matrix = TRUE,
+  to.upper = FALSE,
+  image = NULL)
+
+
+# Mouse 2
+saline_mouse_2 <- "/Volumes/Seagate_4TB/spatial_ntm_samples/demultiplexed/Saline_sample_round_two/outs/"
+
+list.files(saline_mouse_2)
+
+saline_mouse_2_data <- Load10X_Spatial(
+ saline_mouse_2,
+  filename = "filtered_feature_bc_matrix.h5",
+  assay = "spatial",
+  slice = "saline",
+  filter.matrix = TRUE,
+  to.upper = FALSE,
+  image = NULL)
+
+
+```
+
+
+## NTM group
+
+```{r}
+# Mouse 1
+ntm_mouse_1 <- "/Volumes/Seagate_4TB/spatial_ntm_samples/demultiplexed/ntm_sample_round_one/outs/"
+
+list.files(ntm_mouse_1)
+
+ntm_mouse_1_data <- Load10X_Spatial(
+  ntm_mouse_1,
+  filename = "filtered_feature_bc_matrix.h5",
+  assay = "spatial",
+  slice = "ntm",
+  filter.matrix = TRUE,
+  to.upper = FALSE,
+  image = NULL)
+
+# Mouse 2
+ntm_mouse_2 <- "/Volumes/Seagate_4TB/spatial_ntm_samples/demultiplexed/ntm_sample_round_two/outs/"
+
+list.files(ntm_mouse_2)
+
+ntm_mouse_2_data <- Load10X_Spatial(
+ ntm_mouse_2,
+  filename = "filtered_feature_bc_matrix.h5",
+  assay = "spatial",
+  slice = "ntm",
+  filter.matrix = TRUE,
+  to.upper = FALSE,
+  image = NULL)
+
+
+```
+
+## BCG group
+
+```{r}
+# Mouse 1
+bcg_mouse_1 <- "/Volumes/Seagate_4TB/spatial_ntm_samples/demultiplexed/bcg_sample_round_one/outs/"
+
+list.files(bcg_mouse_1)
+
+bcg_mouse_1_data <- Load10X_Spatial(
+  bcg_mouse_1,
+  filename = "filtered_feature_bc_matrix.h5",
+  assay = "spatial",
+  slice = "bcg",
+  filter.matrix = TRUE,
+  to.upper = FALSE,
+  image = NULL)
+
+# Mouse 2
+bcg_mouse_2 <- "/Volumes/Seagate_4TB/spatial_ntm_samples/demultiplexed/bcg_sample_round_two/outs/"
+
+list.files(bcg_mouse_2)
+
+bcg_mouse_2_data <- Load10X_Spatial(
+ bcg_mouse_2,
+  filename = "filtered_feature_bc_matrix.h5",
+  assay = "spatial",
+  slice = "bcg",
+  filter.matrix = TRUE,
+  to.upper = FALSE,
+  image = NULL)
+
+
+```
+
+## NTM + BCG group
+
+```{r}
+# Mouse 1
+ntm_bcg_mouse_1 <- "/Volumes/Seagate_4TB/spatial_ntm_samples/demultiplexed/ntm_bcg_sample_round_two/outs/"
+
+list.files(ntm_bcg_mouse_1)
+
+ntm_bcg_mouse_1_data <- Load10X_Spatial(
+  ntm_bcg_mouse_1,
+  filename = "filtered_feature_bc_matrix.h5",
+  assay = "spatial",
+  slice = "ntmbcg",
+  filter.matrix = TRUE,
+  to.upper = FALSE,
+  image = NULL)
+
+# Mouse 2
+ntm_bcg_mouse_2 <- "/Volumes/Seagate_4TB/spatial_ntm_samples/demultiplexed/ntm_bcg_sample_round_two/outs/"
+
+list.files(ntm_bcg_mouse_2)
+
+ntm_bcg_mouse_2_data <- Load10X_Spatial(
+ntm_bcg_mouse_2,
+  filename = "filtered_feature_bc_matrix.h5",
+  assay = "spatial",
+  slice = "ntmbcg",
+  filter.matrix = TRUE,
+  to.upper = FALSE,
+  image = NULL)
+
+
+```
+
+### saline
+```{r}
+# Mouse 1
+saline_mouse_1_data <- SCTransform(saline_mouse_1_data, assay = "spatial", verbose = FALSE)
+
+# Mouse 2
+saline_mouse_2_data <- SCTransform(saline_mouse_2_data, assay = "spatial", verbose = FALSE)
+```
+
+
+### NTM
+```{r}
+# Mouse 1
+ntm_mouse_1_data <- SCTransform(ntm_mouse_1_data, assay = "spatial", verbose = FALSE)
+
+# Mouse 2
+ntm_mouse_2_data <- SCTransform(ntm_mouse_2_data, assay = "spatial", verbose = FALSE)
+```
+
+### BCG
+```{r}
+# Mouse 1
+bcg_mouse_1_data <- SCTransform(bcg_mouse_1_data, assay = "spatial", verbose = FALSE)
+
+# Mouse 2
+bcg_mouse_2_data <- SCTransform(bcg_mouse_2_data, assay = "spatial", verbose = FALSE)
+```
+
+### NTM + BCG
+```{r}
+# Mouse 1
+ntm_bcg_mouse_1_data <- SCTransform(ntm_bcg_mouse_1_data, assay = "spatial", verbose = FALSE)
+
+# Mouse 2
+ntm_bcg_mouse_2_data <- SCTransform(ntm_bcg_mouse_2_data, assay = "spatial", verbose = FALSE)
+```
+
+## merging object
+
+```{r}
+saline <- merge(saline_mouse_1_data, y = saline_mouse_2_data, project = "saline")
+VariableFeatures(saline) <- c(VariableFeatures(saline_mouse_1_data), VariableFeatures(saline_mouse_2_data))
+
+ntm <- merge(ntm_mouse_1_data, y = ntm_mouse_2_data, project = "ntm")
+VariableFeatures(ntm) <- c(VariableFeatures(ntm_mouse_1_data), VariableFeatures(ntm_mouse_2_data))
+
+bcg <- merge(bcg_mouse_1_data, y = bcg_mouse_2_data, project = "bcg")
+VariableFeatures(bcg) <- c(VariableFeatures(bcg_mouse_1_data), VariableFeatures(bcg_mouse_2_data))
+
+ntm_bcg <- merge(ntm_bcg_mouse_1_data, y = ntm_bcg_mouse_2_data, project = "ntm_bcg")
+VariableFeatures(ntm_bcg) <- c(VariableFeatures(ntm_bcg_mouse_1_data), VariableFeatures(ntm_bcg_mouse_2_data))
+
+
+
+saline$stim <- "saline"
+ntm$stim <- "ntm"
+bcg$stim <- "bcg"
+ntm_bcg$stim <- "ntm_bcg"
+
+all_groups <- merge(saline, c(ntm, bcg, ntm_bcg), project = "all_groups")
+
+unique(all_groups@meta.data$orig.ident)
+unique(all_groups@meta.data$stim)
+
+```
+
+## dimensionality reduction and clustering
+
+```{r, fig.width = 10, fig.height= 10}
+DefaultAssay(all_groups) <- "SCT"
+VariableFeatures(all_groups) <- c(VariableFeatures(saline), VariableFeatures(ntm), VariableFeatures(ntm), VariableFeatures(bcg), VariableFeatures(ntm_bcg))
+all_data <- RunPCA(all_groups, verbose = FALSE)
+all_data <- FindNeighbors(all_data, dims = 1:30)
+all_data <- FindClusters(all_data, verbose = FALSE)
+all_data <- RunUMAP(all_data, dims = 1:30)
+
+```
+
+## labelling clusters using SingleR pipeline
+
+```{r}
+# First convert the seurat object to single cell experiment object (otherwise the SingleR pipeline will not work)
+
+all_data.sce <- as.SingleCellExperiment(all_data)
+
+ref.data <- celldex::ImmGenData()
+
+# run singleR pipeline to find the cell types
+
+cell_types<- SingleR(test=all_data.sce, assay.type.test=1, 
+    ref=ref.data, labels=ref.data$label.main)
+
+table(cell_types$labels)
+
+all_data[["ref.data"]] <- cell_types$labels
+
+```
+
+## set the colors of the cell types
+
+```{r}
+my_cols <- c('B cells'='#F8766D','DC'='#39568CFF','Endothelial cells'='#CD9600','Epithelial cells'='#00C19A','Fibroblasts'= "#C77CFF",
+    'Macrophages'='#00A9FF','Monocytes'='#0CB702','Stromal cells'='#FF61CC', "ILC" = "darkgrey", "Neutrophils" = "Darkred")
+```
+
+```{r}
+my_cols_2 <- c("saline" = "red2", "ntm" = "green4", "bcg" = "grey59", "ntm_bcg" = "dodgerblue3")
+
+all_data$stim = factor(all_data$stim, levels = c("saline", "ntm", "bcg", "ntm_bcg"))
+```
+
+## Plot umap and spatial plot to localize each cell type
+
+```{r, fig.width = 16, fig.height= 10}
+
+DimPlot(all_data, group.by = c("ref.data"), split.by = "stim", reduction = "umap",label = F, pt.size = 1.5, label.size = 5, cols = my_cols)
+
+```
+
+## Plot violin plot to see markers
+
+```{r}
+VlnPlot(all_data, group.by = c("ref.data"), features = c("Cxcr5"), split.by = "stim", cols = my_cols_2)
+
+VlnPlot(all_data, group.by = c("ref.data"), features = c("Cd38"), split.by = "stim", cols = my_cols_2)
+
+VlnPlot(all_data, group.by = c("ref.data"), features = c("Ccr6"), split.by = "stim", cols = my_cols_2)
+
+VlnPlot(all_data, group.by = c("ref.data"), features = c("Ltb"), split.by = "stim", cols = my_cols_2)
+
+VlnPlot(all_data, group.by = c("ref.data"), features = c("Mki67"), split.by = "stim", cols = my_cols_2)
+
+VlnPlot(all_data, group.by = c("ref.data"), features = c("Tnfrsf13c"), split.by = "stim", cols = my_cols_2)
+
+VlnPlot(saline_mouse_1_data, group.by = c("ref.data"), features = c("Nos2"), cols = my_cols_2)
+```
+
+```{r}
+FeaturePlot(all_data, features = c("Cxcr5", "Cd38", "Mki67", "Cd83"),  split.by = "stim")
+
+FeaturePlot(saline_mouse_1_data, features = c("Nos2", "Thbs1", "Cxcl10", "Tgfbi"),  split.by = "stim")
+
+```
+
+## Cell type ratio
+```{r}
+
+counts_all <- table(Idents(all_data), all_data$stim, all_data$ref.data)
+
+write.csv(counts_all, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/all_groups_combined/counts_all.csv")
+
+ratio <- read_excel("~/Documents/spatial_ntm/saline/ratio.xlsx", sheet = "Sheet5")
+
+ratio$Groups = factor(ratio$Groups, levels = c("saline", "ntm", "bcg", "ntm+bcg"))
+
+ggplot(ratio, aes(x = Groups, y=ratio, group = 1, fill=cell_type)) +
+geom_bar(position = "fill", stat = "identity") + scale_fill_manual(values = my_cols) + theme_classic() +
+theme(axis.text.x = element_text(size = 18, face = "bold"), axis.text.y = element_text(size = 20), axis.title.x = element_text(size = 20, face = "bold"), axis.title.y = element_text(size = 24, face = "bold"), legend.text = element_text(size = 24), legend.title = element_text(size = 24), plot.title = element_text(color="black", size=24, face="bold")) + scale_color_manual(values=c('grey69','steelblue2', "sandybrown", "khaki1")) + theme(strip.text = element_text(size=18, face = "bold")) + labs (y="Ratio of Major cell types") + ggtitle("Cell type distribution") + labs(fill = "Cell types")
+```
+
+## Find differentialy expressed genes
+
+```{r}
+
+all_data_2 <- PrepSCTFindMarkers(all_data, assay = "SCT", verbose = TRUE)
+
+
+```
+
+```{r}
+ntm_bcg.markers <- FindMarkers(all_data_2, group.by = "stim", ident.1 = "ntm_bcg", ident.2 = "saline", test.use = "DESeq2")
+
+write.csv(ntm_bcg.markers, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/all_groups_combined/ntm_bcg.markers.csv")
+
+ntm.markers <- FindMarkers(all_data_2, group.by = "stim", ident.1 = "ntm", ident.2 = "saline", test.use = "DESeq2")
+
+write.csv(ntm.markers, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/all_groups_combined/ntm.markers.csv")
+
+saline.markers <- FindMarkers(all_data_2, group.by = "stim", ident.1 = "saline", ident.2 = "ntm_bcg", test.use = "DESeq2")
+
+write.csv(saline.markers, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/all_groups_combined/saline.markers.csv")
+
+bcg.markers <- FindMarkers(all_data_2, group.by = "stim", ident.1 = "bcg", ident.2 = "ntm_bcg", test.use = "DESeq2")
+
+write.csv(bcg.markers, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/all_groups_combined/bcg.markers.csv")
+```
+
+# Gene set enrichment NTM+BCG
+
+```{r}
+organism = org.Mm.eg.db
+```
+
+## prepare input data for gene set enrichment
+
+```{r}
+# reading in data from deseq2
+ntm_bcg_gse = read.csv("/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/all_groups_combined/ntm_bcg.markers.csv", header=TRUE)
+
+# we want the log2 fold change 
+original_gene_list <- ntm_bcg_gse$avg_log2FC
+
+# name the vector
+names(original_gene_list) <- ntm_bcg_gse$X
+
+# omit any NA values 
+gene_list<-na.omit(original_gene_list)
+
+# sort the list in decreasing order (required for clusterProfiler)
+gene_list = sort(gene_list, decreasing = TRUE)
+```
+
+## Gene set enrichment
+
+```{r}
+#gene set enrichment function for B cell cluster
+
+gse <- gseGO(geneList=gene_list, 
+             ont ="ALL", 
+             keyType = "SYMBOL", 
+             minGSSize = 3, 
+             maxGSSize = 800, 
+             pvalueCutoff = 0.05, 
+             verbose = TRUE, 
+             OrgDb = organism, 
+             pAdjustMethod = "none",
+             eps = 0.0)
+
+dotplot(gse, showCategory=10, split=".sign") + facet_grid(.~.sign)
+
+```
+
+```{r}
+require(DOSE)
+ntm_bcg_gse <- as.data.frame(gse)
+
+## count the gene number
+gene_count<- gse@result %>% group_by(ID) %>% summarise(count = sum(str_count(core_enrichment, "/")) + 1)
+
+## merge with the original dataframe
+ntm_bcg_gse<- left_join(gse@result, gene_count, by = "ID") %>% mutate(GeneRatio = count/setSize)
+
+write.csv(ntm_bcg_gse, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/ntm+bcg/ntm_bcg_dataframe.csv")
+
+ntm_bcg_gse = read.csv("/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/ntm+bcg/ntm_bcg_dataframe.csv", header=TRUE)
+
+ggplot(ntm_bcg_gse[c(362, 271,591,219,784,77,146,413,123,557,1069,952,707,1412,912,43,548,1188,1189,1190,1032,1183,1547,1391),],
+             aes(x = GeneRatio, y = Description)) + 
+             geom_point(aes(size = GeneRatio, color = p.adjust)) + 
+             theme_bw(base_size = 14) +
+             ylab(NULL) +
+             ggtitle("GO pathway enrichment")
+```
+
+## Gene set enrichment saline
+
+### prepare input data for gene set enrichment
+
+```{r}
+# reading in data from deseq2
+saline_gse = read.csv("/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/all_groups_combined/saline.markers.csv", header=TRUE)
+
+# we want the log2 fold change 
+original_gene_list <- saline_gse$avg_log2FC
+
+# name the vector
+names(original_gene_list) <- saline_gse$X
+
+# omit any NA values 
+gene_list<-na.omit(original_gene_list)
+
+# sort the list in decreasing order (required for clusterProfiler)
+gene_list = sort(gene_list, decreasing = TRUE)
+```
+
+## Gene set enrichment
+
+```{r}
+#gene set enrichment function for B cell cluster
+
+gse <- gseGO(geneList=gene_list, 
+             ont ="ALL", 
+             keyType = "SYMBOL", 
+             minGSSize = 3, 
+             maxGSSize = 800, 
+             pvalueCutoff = 0.05, 
+             verbose = TRUE, 
+             OrgDb = organism, 
+             pAdjustMethod = "none",
+             eps = 0.0)
+
+dotplot(gse, showCategory=10, split=".sign") + facet_grid(.~.sign)
+
+```
+
+```{r}
+require(DOSE)
+saline_gse_dataframe <- as.data.frame(gse)
+
+## count the gene number
+gene_count<- gse@result %>% group_by(ID) %>% summarise(count = sum(str_count(core_enrichment, "/")) + 1)
+
+## merge with the original dataframe
+saline_gse_dataframe <- left_join(gse@result, gene_count, by = "ID") %>% mutate(GeneRatio = count/setSize)
+
+write.csv(saline_gse_dataframe, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/saline_gse_dataframe.csv")
+
+saline_gse_dataframe = read.csv("/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/saline_gse_dataframe.csv", header=TRUE)
+
+ggplot(saline_gse_dataframe[c(1022,230,1156,596,530,1292,629,1301,1451,1452,1495,1497,1496,45,877,509,542,893,648,295,663,892,640,711,1573,103),],
+             aes(x = GeneRatio, y = Description)) + 
+             geom_point(aes(size = GeneRatio, color = p.adjust)) + 
+             theme_bw(base_size = 14) +
+             ylab(NULL) +
+             ggtitle("GO pathway enrichment")
+```
+
+
+## NTM
+## prepare input data for gene set enrichment
+
+```{r}
+# reading in data from deseq2
+ntm_gse = read.csv("/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/all_groups_combined/ntm.markers.csv", header=TRUE)
+
+# we want the log2 fold change 
+original_gene_list <- ntm_gse$avg_log2FC
+
+# name the vector
+names(original_gene_list) <- ntm_gse$X
+
+# omit any NA values 
+gene_list<-na.omit(original_gene_list)
+
+# sort the list in decreasing order (required for clusterProfiler)
+gene_list = sort(gene_list, decreasing = TRUE)
+```
+
+## Gene set enrichment
+
+```{r}
+#gene set enrichment function for B cell cluster
+
+gse <- gseGO(geneList=gene_list, 
+             ont ="ALL", 
+             keyType = "SYMBOL", 
+             minGSSize = 3, 
+             maxGSSize = 800, 
+             pvalueCutoff = 0.05, 
+             verbose = TRUE, 
+             OrgDb = organism, 
+             pAdjustMethod = "none",
+             eps = 0.0,
+             nPermSimple = 10000)
+
+dotplot(gse, showCategory=10, split=".sign") + facet_grid(.~.sign)
+
+```
+
+```{r}
+require(DOSE)
+ntm_gse_dataframe <- as.data.frame(gse)
+
+## count the gene number
+gene_count<- gse@result %>% group_by(ID) %>% summarise(count = sum(str_count(core_enrichment, "/")) + 1)
+
+## merge with the original dataframe
+ntm_gse_dataframe <- left_join(gse@result, gene_count, by = "ID") %>% mutate(GeneRatio = count/setSize)
+
+write.csv(ntm_gse_dataframe, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/ntm/ntm_gse_dataframe.csv")
+
+ggplot(ntm_gse_dataframe[c(545,759,94,501,292,1034,103,1851,669,498,1882,1526,1157,1478,226,1702,809,1263,1174,1740,250,1451,902,1294,1045),],
+             aes(x = GeneRatio, y = Description)) + 
+             geom_point(aes(size = GeneRatio, color = p.adjust)) + 
+             theme_bw(base_size = 14) +
+             ylab(NULL) +
+             ggtitle("GO pathway enrichment")
+```
+
+## BCG
+## prepare input data for gene set enrichment
+
+```{r}
+# reading in data from deseq2
+bcg_gse = read.csv("/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/all_groups_combined/bcg.markers.csv", header=TRUE)
+
+# we want the log2 fold change 
+original_gene_list <- bcg_gse$avg_log2FC
+
+# name the vector
+names(original_gene_list) <- bcg_gse$X
+
+# omit any NA values 
+gene_list<-na.omit(original_gene_list)
+
+# sort the list in decreasing order (required for clusterProfiler)
+gene_list = sort(gene_list, decreasing = TRUE)
+```
+
+## Gene set enrichment
+
+```{r}
+#gene set enrichment function for B cell cluster
+
+gse <- gseGO(geneList=gene_list, 
+             ont ="ALL", 
+             keyType = "SYMBOL", 
+             minGSSize = 3, 
+             maxGSSize = 800, 
+             pvalueCutoff = 0.05, 
+             verbose = TRUE, 
+             OrgDb = organism, 
+             pAdjustMethod = "none",
+             eps = 0.0)
+
+dotplot(gse, showCategory=10, split=".sign") + facet_grid(.~.sign)
+
+```
+
+```{r}
+require(DOSE)
+bcg_gse_dataframe <- as.data.frame(gse)
+
+## count the gene number
+gene_count<- gse@result %>% group_by(ID) %>% summarise(count = sum(str_count(core_enrichment, "/")) + 1)
+
+## merge with the original dataframe
+bcg_gse_dataframe <- left_join(gse@result, gene_count, by = "ID") %>% mutate(GeneRatio = count/setSize)
+
+write.csv(bcg_gse_dataframe, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/bcg/bcg_gse_dataframe.csv")
+
+ggplot(bcg_gse_dataframe[c(314,362,634,664,559,1003,648,1378,321,1295,1376,344,1326,768,1317,1092,1339,1211,1056,1237,970,1047,800,218),],
+             aes(x = GeneRatio, y = Description)) + 
+             geom_point(aes(size = GeneRatio, color = p.adjust)) + 
+             theme_bw(base_size = 14) +
+             ylab(NULL) +
+             ggtitle("GO pathway enrichment")
+```
+
+#KEGG pathwaty analysis
+
+## KEGG pathway analysis
+
+```{r}
+# Convert gene IDs for gse to KEGG function
+# We will lose some genes here because not all IDs will be converted
+
+ids<-bitr(names(gene_list), fromType = "SYMBOL", toType = "ENTREZID", OrgDb=organism)
+ 
+# remove duplicate IDS (here I use "ENSEMBL", but it should be whatever was selected as keyType)
+dedup_ids = ids[!duplicated(ids[c("SYMBOL")]),]
+
+# Create a new dataframe df2 which has only the genes which were successfully mapped using the bitr function above
+ntm_bcg_gse_2 = ntm_bcg_gse[ntm_bcg_gse$X %in% dedup_ids$SYMBOL,]
+
+# Create a new column in df2 with the corresponding ENTREZ IDs
+ntm_bcg_gse_2$Y = dedup_ids$ENTREZID
+
+# Create a vector of the gene unuiverse
+kegg_gene_list <- ntm_bcg_gse_2$avg_log2FC
+
+# Name vector with ENTREZ ids
+names(kegg_gene_list) <- ntm_bcg_gse_2$Y
+
+# omit any NA values 
+kegg_gene_list<-na.omit(kegg_gene_list)
+
+# sort the list in decreasing order (required for clusterProfiler)
+kegg_gene_list = sort(kegg_gene_list, decreasing = TRUE)
+```
+
+## running kegg
+
+```{r}
+kegg_organism = "mmu"
+kk <- gseKEGG(geneList     = kegg_gene_list,
+               organism     = kegg_organism,
+               minGSSize    = 3,
+               maxGSSize    = 800,
+               pvalueCutoff = 0.05,
+               pAdjustMethod = "none",
+               keyType       = "ncbi-geneid",
+               eps = 0.0)
+
+write.csv(kk, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/ntm+bcg/ntm_bcg_kegg.csv")
+```
+
+## plot kegg pathway graph
+
+```{r}
+dotplot(kk_stromal, showCategory = 10, title = "Enriched Pathways" , split=".sign") + facet_grid(.~.sign)
+```
+
+```{r}
+library(pathview)
+
+# Produce the native KEGG plot (PNG) for first set of genes
+dme <- pathview(gene.data=kegg_gene_list, pathway.id="mmu04662", species = kegg_organism, low = list(gene = "#481567FF"), mid =
+list(gene = "#20A387FF"), high = list(gene = "#FDE725FF"))
+
+# Produce a different plot (PDF) (not displayed here)
+dme <- ?pathview(gene.data=kegg_gene_list, pathway.id="mmu04662", species = kegg_organism, kegg.native = F, low = list(gene = "#481567FF"), mid =
+list(gene = "#20A387FF"), high = list(gene = "#FDE725FF"))
+
+# Produce the native KEGG plot (PNG) for first set of genes
+dme_stromal <- pathview(gene.data=kegg_gene_list_stromal, pathway.id="mmu04610", species = kegg_organism, low = list(gene = "#481567FF"), mid =
+list(gene = "#20A387FF"), high = list(gene = "#FDE725FF"))
+
+# Produce a different plot (PDF) (not displayed here)
+dme_stromal <- ?pathview(gene.data=kegg_gene_list_stromal, pathway.id="mmu04610", species = kegg_organism, kegg.native = F, low = list(gene = "#481567FF"), mid =
+list(gene = "#20A387FF"), high = list(gene = "#FDE725FF"))
+
+
+# Produce the native KEGG plot (PNG) for first set of genes
+dme_stromal <- pathview(gene.data=kegg_gene_list_stromal, pathway.id="mmu04612", species = kegg_organism, low = list(gene = "#481567FF"), mid =
+list(gene = "#20A387FF"), high = list(gene = "#FDE725FF"))
+
+# Produce a different plot (PDF) (not displayed here)
+dme_stromal <- ?pathview(gene.data=kegg_gene_list_stromal, pathway.id="mmu04612", species = kegg_organism, kegg.native = F, low = list(gene = "#481567FF"), mid =
+list(gene = "#20A387FF"), high = list(gene = "#FDE725FF"))
+
+# Produce the native KEGG plot (PNG) for first set of genes
+dme_stromal <- pathview(gene.data=kegg_gene_list_stromal, pathway.id="mmu04060", species = kegg_organism, low = list(gene = "#481567FF"), mid =
+list(gene = "#20A387FF"), high = list(gene = "#FDE725FF"))
+
+# Produce a different plot (PDF) (not displayed here)
+dme_stromal <- ?pathview(gene.data=kegg_gene_list_stromal, pathway.id="mmu04060", species = kegg_organism, kegg.native = F, low = list(gene = "#481567FF"), mid =
+list(gene = "#20A387FF"), high = list(gene = "#FDE725FF"))
+
+
+```
+
+# Volcano plots
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+ntm_bcg_gse = read.csv("/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/all_groups_combined/ntm_bcg.markers.csv", header=TRUE)
+```
+
+```{r}
+  if (!requireNamespace('BiocManager', quietly = TRUE))
+    install.packages('BiocManager')
+
+  BiocManager::install('EnhancedVolcano')
+   library(EnhancedVolcano)
+  
+  BiocManager::install("airway")
+  
+  library(airway)
+  library(magrittr)
+
+  data('airway')
+  airway$dex %<>% relevel('untrt')
+```
+
+```{r}
+ntm_bcg_gse$expression = 
+                     ifelse(ntm_bcg_gse$avg_log2FC> 1 ,'Up','Down')
+```
+
+
+```{r}
+library(ggplot2)
+p <- ggplot(data = ntm_bcg_gse, 
+            aes(x = avg_log2FC, 
+                y = -log10(p_val_adj), 
+                colour=expression)) +
+  geom_point(alpha=0.4, size=3.5) +
+  scale_color_manual(values=c("blue", "grey","red"))+
+  xlim(c(-4.5, 4.5)) +
+  geom_vline(xintercept=c(-1,1),lty=4,col="black",lwd=0.8) +
+  geom_hline(yintercept = 1.301,lty=4,col="black",lwd=0.8) +
+  labs(x="log2(fold change)",
+       y="-log10 (adj.p-value)",
+       title="Differential expression")  +
+  theme_bw()+
+  theme(plot.title = element_text(hjust = 0.5), 
+        legend.position="right", 
+        legend.title = element_blank())
+p
+```

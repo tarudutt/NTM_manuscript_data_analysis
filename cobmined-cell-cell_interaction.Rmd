@@ -1,0 +1,878 @@
+---
+title: "Cell-cell interaction of all groups"
+author: "Taru Dutt"
+date: "3/3/2022"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load libraries
+
+In this step, we are loading the libraries which are required for analysis and plotting of the data.
+
+
+```{r}
+library(Seurat)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(clusterProfiler)
+library(enrichplot)
+library(clusterProfiler)
+library(enrichplot)
+# we use ggplot2 to add x axis labels (ex: ridgeplot)
+library(stringr)
+library(celldex)
+library(ensembldb)
+library(SingleR)
+library(limma)
+library(DESeq2)
+library(org.Mm.eg.db)
+library(rhdf5)
+library(hdf5r)
+library(pheatmap)
+library(ComplexHeatmap)
+library(CellChat)
+library(patchwork)
+options(stringsAsFactors = FALSE)
+library(NMF)
+library(ggalluvial)
+
+```
+
+
+## load data
+
+
+```{r}
+# saline
+saline<- "/Volumes/Seagate_4TB/spatial_ntm_samples/demultiplexed/Saline_sample_round_one/outs/"
+
+list.files(saline)
+
+saline <- Load10X_Spatial(
+  saline,
+  filename = "filtered_feature_bc_matrix.h5",
+  assay = "spatial",
+  slice = "saline",
+  filter.matrix = TRUE,
+  to.upper = FALSE,
+  image = NULL)
+
+# ntm
+ntm <- "/Volumes/Seagate_4TB/spatial_ntm_samples/demultiplexed/ntm_sample_round_two/outs/"
+
+list.files(ntm)
+
+ntm <- Load10X_Spatial(
+ ntm,
+  filename = "filtered_feature_bc_matrix.h5",
+  assay = "spatial",
+  slice = "ntm",
+  filter.matrix = TRUE,
+  to.upper = FALSE,
+  image = NULL)
+
+# bcg
+
+bcg <- "/Volumes/Seagate_4TB/spatial_ntm_samples/demultiplexed/bcg_sample_round_one/outs/"
+
+list.files(bcg)
+
+bcg <- Load10X_Spatial(
+  bcg,
+  filename = "filtered_feature_bc_matrix.h5",
+  assay = "spatial",
+  slice = "bcg",
+  filter.matrix = TRUE,
+  to.upper = FALSE,
+  image = NULL)
+
+# ntm + bcg
+ntm_bcg <- "/Volumes/Seagate_4TB/spatial_ntm_samples/demultiplexed/ntm_bcg_sample_round_two/outs/"
+
+list.files(ntm_bcg)
+
+ntm_bcg <- Load10X_Spatial(
+ntm_bcg,
+  filename = "filtered_feature_bc_matrix.h5",
+  assay = "spatial",
+  slice = "ntmbcg",
+  filter.matrix = TRUE,
+  to.upper = FALSE,
+  image = NULL)
+
+```
+
+## Data normalization
+
+```{r}
+saline <- SCTransform(saline, assay = "spatial", verbose = FALSE)
+
+ntm <- SCTransform(ntm, assay = "spatial", verbose = FALSE)
+
+bcg <- SCTransform(bcg, assay = "spatial", verbose = FALSE)
+
+ntm_bcg <- SCTransform(ntm_bcg, assay = "spatial", verbose = FALSE)
+
+```
+
+## dimensionality reduction and clustering
+
+```{r, fig.width = 10, fig.height= 10}
+# saline
+saline_analyzed <- RunPCA(saline, assay = "SCT", verbose = FALSE)
+saline_analyzed <- FindNeighbors(saline_analyzed, reduction = "pca", dims = 1:5)
+saline_analyzed <- FindClusters(saline_analyzed, verbose = FALSE, resolution = 0.8)
+saline_analyzed <- RunUMAP(saline_analyzed, reduction = "pca", dims = 1:5)
+
+# ntm
+ntm_analyzed <- RunPCA(ntm, assay = "SCT", verbose = FALSE)
+ntm_analyzed <- FindNeighbors(ntm_analyzed, reduction = "pca", dims = 1:5)
+ntm_analyzed <- FindClusters(ntm_analyzed, verbose = FALSE, resolution = 0.8)
+ntm_analyzed <- RunUMAP(ntm_analyzed, reduction = "pca", dims = 1:5)
+
+# bcg
+bcg_analyzed <- RunPCA(bcg, assay = "SCT", verbose = FALSE)
+bcg_analyzed <- FindNeighbors(bcg_analyzed, reduction = "pca", dims = 1:5)
+bcg_analyzed <- FindClusters(bcg_analyzed, verbose = FALSE, resolution = 0.8)
+bcg_analyzed <- RunUMAP(bcg_analyzed, reduction = "pca", dims = 1:5)
+
+# ntm+bcg
+ntm_bcg_analyzed <- RunPCA(ntm_bcg, assay = "SCT", verbose = FALSE)
+ntm_bcg_analyzed <- FindNeighbors(ntm_bcg_analyzed, reduction = "pca", dims = 1:5)
+ntm_bcg_analyzed <- FindClusters(ntm_bcg_analyzed, verbose = FALSE, resolution = 0.8)
+ntm_bcg_analyzed <- RunUMAP(ntm_bcg_analyzed, reduction = "pca", dims = 1:5)
+```
+
+## labelling clusters using SingleR pipeline
+
+```{r}
+# saline
+saline_analyzed.sce <- as.SingleCellExperiment(saline_analyzed)
+
+# ntm
+ntm_analyzed.sce <- as.SingleCellExperiment(ntm_analyzed)
+
+# bcg
+bcg_analyzed.sce <- as.SingleCellExperiment(bcg_analyzed)
+
+# ntm
+ntm_bcg_analyzed.sce <- as.SingleCellExperiment(ntm_bcg_analyzed)
+
+#create reference data
+
+ref.data <- celldex::ImmGenData()
+
+# run singleR pipeline to find the cell types
+
+## saline
+cell_types_saline <- SingleR(test=saline_analyzed.sce, assay.type.test=1, 
+    ref=ref.data, labels=ref.data$label.main)
+
+## ntm
+cell_types_ntm <- SingleR(test=ntm_analyzed.sce, assay.type.test=1, 
+    ref=ref.data, labels=ref.data$label.main)
+
+#bcg
+cell_types_bcg <- SingleR(test=bcg_analyzed.sce, assay.type.test=1, 
+    ref=ref.data, labels=ref.data$label.main)
+
+#ntm+bcg
+cell_types_ntm_bcg <- SingleR(test=ntm_bcg_analyzed.sce, assay.type.test=1, 
+    ref=ref.data, labels=ref.data$label.main)
+
+
+```
+
+## View cell types
+
+```{r}
+# saline
+table(cell_types_saline$labels)
+
+# saline
+table(cell_types_ntm$labels)
+
+# saline
+table(cell_types_bcg$labels)
+
+# saline
+table(cell_types_ntm_bcg$labels)
+```
+
+## merging metadata of cell types to seurat object
+
+```{r}
+# saline
+saline_analyzed[["ref.data"]] <- cell_types_saline$labels
+
+# saline
+ntm_analyzed[["ref.data"]] <- cell_types_ntm$labels
+
+# saline
+bcg_analyzed[["ref.data"]] <- cell_types_bcg$labels
+
+# saline
+ntm_bcg_analyzed[["ref.data"]] <- cell_types_ntm_bcg$labels
+```
+
+### my colors
+
+```{r}
+my_cols <- c('B cells'='#F8766D','DC'='#39568CFF','Endothelial cells'='#CD9600','Epithelial cells'='#00C19A','Fibroblasts'= "#C77CFF",
+   "ILC" = "grey", 'Macrophages'='#00A9FF','Monocytes'='#0CB702', "Neutrophils" = "Darkred", 'Stromal cells'='#FF61CC')
+```
+
+# Create cell chat object and merge
+
+## saline
+```{r, fig.width = 10, fig.height= 10}
+saline_cellchat <- createCellChat(object = saline_analyzed, group.by = "ref.data")
+
+CellChatDB <- CellChatDB.mouse
+showDatabaseCategory(CellChatDB)
+CellChatDB.use <- CellChatDB
+saline_cellchat@DB <- CellChatDB.use
+
+
+saline_cellchat <- subsetData(saline_cellchat)
+saline_cellchat <- identifyOverExpressedGenes(saline_cellchat)
+saline_cellchat <- identifyOverExpressedInteractions(saline_cellchat)
+
+
+saline_cellchat <- computeCommunProb(saline_cellchat)
+saline_cellchat <- filterCommunication(saline_cellchat, min.cells = 10)
+saline_cellchat <- computeCommunProbPathway(saline_cellchat)
+saline_cellchat <- aggregateNet(saline_cellchat)
+
+groupSize <- as.numeric(table(saline_cellchat@idents))
+par(mfrow = c(1,2), xpd=TRUE)
+netVisual_circle(saline_cellchat@net$count, vertex.weight = groupSize, weight.scale = T, label.edge= F, title.name = "Number of interactions", color.use = my_cols)
+netVisual_circle(saline_cellchat@net$weight, vertex.weight = groupSize, weight.scale = T, label.edge= F, title.name = "Interaction weights/strength", color.use = my_cols)
+
+
+# See interaction of each cell type with the another
+
+mat1 <- saline_cellchat@net$weight
+par(mfrow = c(3,4), xpd=TRUE)
+for (i in 1:nrow(mat1)) {
+  mat2 <- matrix(0, nrow = nrow(mat1), ncol = ncol(mat1), dimnames = dimnames(mat1))
+  mat2[i, ] <- mat1[i, ]
+  netVisual_circle(mat2, vertex.weight = groupSize, weight.scale = T, edge.weight.max = max(mat1), title.name = rownames(mat1)[i], color.use = my_cols)}
+
+```
+
+### Visualize signalling pathways in each cell
+
+```{r, fig.width = 10, fig.height= 10}
+
+# Identify signaling pathways showing significant communications 
+saline_cellchat@netP$pathways
+
+# Evaluate one of the pathways
+pathways.show <- c("NOTCH", "IL16", "EPHA", "HSPG", "PTPRM", "SEMA6", "THBS") 
+vertex.receiver = seq(2,5) # a numeric vector. 
+netVisual_aggregate(saline_cellchat, signaling = pathways.show,  vertex.receiver = vertex.receiver, color.use = my_cols)
+
+# Chord diagram
+par(mfrow=c(1,1))
+netVisual_aggregate(saline_cellchat, signaling = pathways.show, layout = "chord", color.use = my_cols)
+
+
+# Heatmap
+par(mfrow=c(1,1))
+netVisual_heatmap(saline_cellchat, signaling = pathways.show, color.heatmap = "Reds", color.use = my_cols)
+
+```
+
+### Compute the contribution of each ligand-receptor pair to the overall signaling pathway
+
+```{r, fig.width = 10, fig.height= 10}
+
+netAnalysis_contribution(saline_cellchat, signaling = pathways.show)
+
+pairLR.MHC <- extractEnrichedLR(saline_cellchat, signaling = pathways.show, geneLR.return = FALSE)
+LR.show <- pairLR.MHC[1,] # show one ligand-receptor pair
+
+# Hierarchy plot
+vertex.receiver = seq(1,4) # a numeric vector
+netVisual_individual(saline_cellchat, signaling = pathways.show,  pairLR.use = LR.show, vertex.receiver = vertex.receiver, color.use = my_cols)
+
+```
+
+### Visualize cell-cell communication mediated by multiple signaling pathways
+```{r, fig.width = 12, fig.height= 12}
+
+# show all the significant interactions (L-R pairs) from some cell groups (defined by 'sources.use') to other cell groups (defined by 'targets.use')
+netVisual_bubble(saline_cellchat, remove.isolate = FALSE, font.size = 16,  pairLR.use = pairLR.MHC)
+
+```
+
+```{r, fig.width = 10, fig.height= 10}
+# show all the significant interactions (L-R pairs) from some cell groups (defined by 'sources.use') to other cell groups (defined by 'targets.use')
+# show all the interactions sending from Inflam.FIB
+netVisual_chord_gene(saline_cellchat, sources.use = 1, targets.use = c(2:8), lab.cex = 0.7,legend.pos.y = 30, color.use = my_cols)
+
+netVisual_chord_gene(saline_cellchat, sources.use = 7, targets.use = c(1:8), lab.cex = 0.7,legend.pos.y = 30, color.use = my_cols)
+```
+
+### Compute the network centrality scores
+```{r, fig.width = 12, fig.height= 12}
+
+saline_cellchat <- netAnalysis_computeCentrality(saline_cellchat, slot.name = "netP") 
+
+# the slot 'netP' means the inferred intercellular communication network of signaling pathways
+
+# Visualize the computed centrality scores using heatmap, allowing ready identification of major signaling roles of cell groups
+netAnalysis_signalingRole_network(saline_cellchat, signaling = pathways.show, width = 8, height = 2.5, font.size = 10, color.use = my_cols)
+
+```
+
+### Signaling role analysis on the aggregated cell-cell communication network from all signaling pathways
+```{r, fig.width = 16, fig.height= 14}
+
+ht1 <- netAnalysis_signalingRole_heatmap(saline_cellchat, pattern = "outgoing", color.use = my_cols, width = 16, height = 12, font.size = 10, font.size.title = 16)
+ht2 <- netAnalysis_signalingRole_heatmap(saline_cellchat, pattern = "incoming", color.use = my_cols, width = 16, height = 12, font.size = 10, font.size.title = 16)
+ht1 + ht2
+```
+
+## Identify and visualize communication patterns (outgoing signal)
+```{r, fig.width = 10, fig.height= 10}
+selectK(saline_cellchat, pattern = "outgoing")
+```
+
+```{r, fig.width = 10, fig.height= 10}
+nPatterns = 3
+saline_cellchat <- identifyCommunicationPatterns(saline_cellchat, pattern = "outgoing", k = nPatterns, width = 3, height = 10, font.size = 8)
+
+# river plot
+netAnalysis_river(saline_cellchat, pattern = "outgoing", color.use = my_cols)
+
+# dot plot
+netAnalysis_dot(saline_cellchat, pattern = "outgoing", color.use = my_cols)
+```
+
+## Identify and visualize communication patterns (incoming signal)
+```{r, fig.width = 10, fig.height= 10}
+selectK(saline_cellchat, pattern = "incoming")
+```
+
+```{r, fig.width = 10, fig.height= 10}
+nPatterns = 3
+saline_cellchat <- identifyCommunicationPatterns(saline_cellchat, pattern = "incoming", k = nPatterns, width = 3, height = 10, font.size = 8)
+
+# river plot
+netAnalysis_river(saline_cellchat, pattern = "incoming", color.use = my_cols)
+
+# dot plot
+netAnalysis_dot(saline_cellchat, pattern = "incoming", color.use = my_cols)
+```
+
+```{r, fig.width = 12, fig.height= 10}
+saline_cellchat <- computeNetSimilarity(saline_cellchat, type = "functional")
+saline_cellchat <- netEmbedding(saline_cellchat, type = "functional")
+#> Manifold learning of the signaling networks for a single dataset
+saline_cellchat <- netClustering(saline_cellchat, type = "functional")
+#> Classification learning of the signaling networks for a single dataset
+# Visualization in 2D-space
+netVisual_embedding(saline_cellchat, type = "functional", label.size = 3.5, color.use = my_cols)
+```
+
+## NTM 
+
+### my colors
+
+```{r}
+my_cols <- c('B cells'='#F8766D','DC'='#39568CFF','Endothelial cells'='#CD9600','Epithelial cells'='#00C19A','Fibroblasts'= "#C77CFF",
+    'Macrophages'='#00A9FF','Monocytes'='#0CB702', "Neutrophils" = "Darkred", 'Stromal cells'='#FF61CC')
+```
+
+
+```{r, fig.width = 10, fig.height= 10}
+ntm_cellchat <- createCellChat(object = ntm_analyzed, group.by = "ref.data")
+
+CellChatDB <- CellChatDB.mouse
+showDatabaseCategory(CellChatDB)
+CellChatDB.use <- CellChatDB
+ntm_cellchat@DB <- CellChatDB.use
+
+
+ntm_cellchat <- subsetData(ntm_cellchat)
+ntm_cellchat <- identifyOverExpressedGenes(ntm_cellchat)
+ntm_cellchat <- identifyOverExpressedInteractions(ntm_cellchat)
+
+
+ntm_cellchat <- computeCommunProb(ntm_cellchat)
+ntm_cellchat <- filterCommunication(ntm_cellchat, min.cells = 10)
+ntm_cellchat <- computeCommunProbPathway(ntm_cellchat)
+ntm_cellchat <- aggregateNet(ntm_cellchat)
+
+groupSize <- as.numeric(table(ntm_cellchat@idents))
+par(mfrow = c(1,2), xpd=TRUE)
+netVisual_circle(ntm_cellchat@net$count, vertex.weight = groupSize, weight.scale = T, label.edge= F, title.name = "Number of interactions", color.use = my_cols)
+netVisual_circle(ntm_cellchat@net$weight, vertex.weight = groupSize, weight.scale = T, label.edge= F, title.name = "Interaction weights/strength", color.use = my_cols)
+
+
+# See interaction of each cell type with the another
+
+mat1 <- ntm_cellchat@net$weight
+par(mfrow = c(3,4), xpd=TRUE)
+for (i in 1:nrow(mat1)) {
+  mat2 <- matrix(0, nrow = nrow(mat1), ncol = ncol(mat1), dimnames = dimnames(mat1))
+  mat2[i, ] <- mat1[i, ]
+  netVisual_circle(mat2, vertex.weight = groupSize, weight.scale = T, edge.weight.max = max(mat1), title.name = rownames(mat1)[i], color.use = my_cols)
+}
+
+```
+
+### Visualize signalling pathways in each cell
+
+```{r, fig.width = 10, fig.height= 10}
+
+# Identify signaling pathways showing significant communications 
+ntm_cellchat@netP$pathways
+
+# Evaluate one of the pathways
+pathways.show <- c("LT", "NRG", "XCR", "IL1", "EPHB", "IGF", "CD39", "CCL") 
+vertex.receiver = seq(2,5) # a numeric vector. 
+netVisual_aggregate(ntm_cellchat, signaling = pathways.show,  vertex.receiver = vertex.receiver, color.use = my_cols)
+
+# Chord diagram
+par(mfrow=c(1,1))
+netVisual_aggregate(ntm_cellchat, signaling = pathways.show, layout = "chord", color.use = my_cols)
+
+
+# Heatmap
+par(mfrow=c(1,1))
+netVisual_heatmap(ntm_cellchat, signaling = pathways.show, color.heatmap = "Reds", color.use = my_cols)
+
+```
+
+### Compute the contribution of each ligand-receptor pair to the overall signaling pathway
+
+```{r, fig.width = 10, fig.height= 10}
+
+netAnalysis_contribution(ntm_cellchat, signaling = pathways.show)
+
+pairLR.MHC <- extractEnrichedLR(ntm_cellchat, signaling = pathways.show, geneLR.return = FALSE)
+LR.show <- pairLR.MHC[1,] # show one ligand-receptor pair
+
+# Hierarchy plot
+vertex.receiver = seq(1,4) # a numeric vector
+netVisual_individual(ntm_cellchat, signaling = pathways.show,  pairLR.use = LR.show, vertex.receiver = vertex.receiver, color.use = my_cols)
+
+```
+
+### Visualize cell-cell communication mediated by multiple signaling pathways
+```{r, fig.width = 12, fig.height= 14}
+
+# show all the significant interactions (L-R pairs) from some cell groups (defined by 'sources.use') to other cell groups (defined by 'targets.use')
+netVisual_bubble(ntm_cellchat, remove.isolate = FALSE, font.size = 15, pairLR.use = pairLR.MHC)
+
+```
+
+```{r, fig.width = 10, fig.height= 10}
+# show all the significant interactions (L-R pairs) from some cell groups (defined by 'sources.use') to other cell groups (defined by 'targets.use')
+# show all the interactions sending from Inflam.FIB
+netVisual_chord_gene(ntm_cellchat, sources.use = 1, targets.use = c(2:8), lab.cex = 0.7,legend.pos.y = 30, color.use = my_cols)
+```
+
+### Compute the network centrality scores
+```{r, fig.width = 12, fig.height= 12}
+
+ntm_cellchat <- netAnalysis_computeCentrality(ntm_cellchat, slot.name = "netP") 
+
+# the slot 'netP' means the inferred intercellular communication network of signaling pathways
+
+# Visualize the computed centrality scores using heatmap, allowing ready identification of major signaling roles of cell groups
+netAnalysis_signalingRole_network(ntm_cellchat, signaling = pathways.show, width = 8, height = 2.5, font.size = 10, color.use = my_cols)
+
+```
+
+### Signaling role analysis on the aggregated cell-cell communication network from all signaling pathways
+```{r, fig.width = 16, fig.height= 14}
+
+ht1 <- netAnalysis_signalingRole_heatmap(ntm_cellchat, pattern = "outgoing", color.use = my_cols, width = 14, height = 12, font.size = 8, font.size.title = 16)
+ht2 <- netAnalysis_signalingRole_heatmap(ntm_cellchat, pattern = "incoming", color.use = my_cols, width = 14, height = 12, font.size = 8, font.size.title = 16)
+ht1 + ht2
+```
+
+## Identify and visualize communication patterns (outgoing signal)
+```{r, fig.width = 10, fig.height= 10}
+selectK(ntm_cellchat, pattern = "outgoing")
+```
+
+```{r, fig.width = 10, fig.height= 10}
+nPatterns = 3
+ntm_cellchat <- identifyCommunicationPatterns(ntm_cellchat, pattern = "outgoing", k = nPatterns, width = 3, height = 12, font.size = 8)
+
+# river plot
+netAnalysis_river(ntm_cellchat, pattern = "outgoing", color.use = my_cols)
+
+# dot plot
+netAnalysis_dot(ntm_cellchat, pattern = "outgoing", color.use = my_cols)
+```
+
+## Identify and visualize communication patterns (incoming signal)
+```{r, fig.width = 10, fig.height= 10}
+selectK(ntm_cellchat, pattern = "incoming")
+```
+
+```{r, fig.width = 10, fig.height= 10}
+nPatterns = 3
+ntm_cellchat <- identifyCommunicationPatterns(ntm_cellchat, pattern = "incoming", k = nPatterns, width = 3, height = 12, font.size = 8)
+
+# river plot
+netAnalysis_river(ntm_cellchat, pattern = "incoming", color.use = my_cols)
+
+# dot plot
+netAnalysis_dot(ntm_cellchat, pattern = "incoming", color.use = my_cols)
+```
+
+```{r, fig.width = 12, fig.height= 10}
+ntm_cellchat <- computeNetSimilarity(ntm_cellchat, type = "functional")
+ntm_cellchat <- netEmbedding(ntm_cellchat, type = "functional")
+#> Manifold learning of the signaling networks for a single dataset
+ntm_cellchat <- netClustering(ntm_cellchat, type = "functional")
+#> Classification learning of the signaling networks for a single dataset
+# Visualization in 2D-space
+netVisual_embedding(ntm_cellchat, type = "functional", label.size = 3.5, color.use = my_cols)
+```
+
+### BCG 
+
+```{r, fig.width = 10, fig.height= 10}
+bcg_cellchat <- createCellChat(object = bcg_analyzed, group.by = "ref.data")
+
+CellChatDB <- CellChatDB.mouse
+showDatabaseCategory(CellChatDB)
+CellChatDB.use <- CellChatDB
+bcg_cellchat@DB <- CellChatDB.use
+
+
+bcg_cellchat <- subsetData(bcg_cellchat)
+bcg_cellchat <- identifyOverExpressedGenes(bcg_cellchat)
+bcg_cellchat <- identifyOverExpressedInteractions(bcg_cellchat)
+
+
+bcg_cellchat <- computeCommunProb(bcg_cellchat)
+bcg_cellchat <- filterCommunication(bcg_cellchat, min.cells = 10)
+bcg_cellchat <- computeCommunProbPathway(bcg_cellchat)
+bcg_cellchat <- aggregateNet(bcg_cellchat)
+
+groupSize <- as.numeric(table(bcg_cellchat@idents))
+par(mfrow = c(1,2), xpd=TRUE)
+netVisual_circle(bcg_cellchat@net$count, vertex.weight = groupSize, weight.scale = T, label.edge= F, title.name = "Number of interactions", color.use = my_cols)
+netVisual_circle(bcg_cellchat@net$weight, vertex.weight = groupSize, weight.scale = T, label.edge= F, title.name = "Interaction weights/strength", color.use = my_cols)
+
+
+# See interaction of each cell type with the another
+
+mat1 <- bcg_cellchat@net$weight
+par(mfrow = c(3,4), xpd=TRUE)
+for (i in 1:nrow(mat1)) {
+  mat2 <- matrix(0, nrow = nrow(mat1), ncol = ncol(mat1), dimnames = dimnames(mat1))
+  mat2[i, ] <- mat1[i, ]
+  netVisual_circle(mat2, vertex.weight = groupSize, weight.scale = T, edge.weight.max = max(mat1), title.name = rownames(mat1)[i], color.use = my_cols)
+}
+
+```
+
+### Visualize signalling pathways in each cell
+
+```{r, fig.width = 10, fig.height= 10}
+
+# Identify signaling pathways showing significant communications 
+bcg_cellchat@netP$pathways
+
+# Evaluate one of the pathways
+pathways.show <- c("IL16","ICAM",  "SPP1", "THBS") 
+vertex.receiver = seq(2,5) # a numeric vector. 
+netVisual_aggregate(bcg_cellchat, signaling = pathways.show,  vertex.receiver = vertex.receiver, color.use = my_cols)
+
+# Chord diagram
+par(mfrow=c(1,1))
+netVisual_aggregate(bcg_cellchat, signaling = pathways.show, layout = "chord", color.use = my_cols)
+
+
+# Heatmap
+par(mfrow=c(1,1))
+netVisual_heatmap(bcg_cellchat, signaling = pathways.show, color.heatmap = "Reds", color.use = my_cols)
+
+```
+
+### Compute the contribution of each ligand-receptor pair to the overall signaling pathway
+
+```{r, fig.width = 10, fig.height= 10}
+
+netAnalysis_contribution(bcg_cellchat, signaling = pathways.show)
+
+pairLR.MHC <- extractEnrichedLR(bcg_cellchat, signaling = pathways.show, geneLR.return = FALSE)
+LR.show <- pairLR.MHC[1,] # show one ligand-receptor pair
+
+# Hierarchy plot
+vertex.receiver = seq(1,4) # a numeric vector
+netVisual_individual(bcg_cellchat, signaling = pathways.show,  pairLR.use = LR.show, vertex.receiver = vertex.receiver, color.use = my_cols)
+
+```
+
+### Visualize cell-cell communication mediated by multiple signaling pathways
+```{r, fig.width = 12, fig.height= 12}
+
+# show all the significant interactions (L-R pairs) from some cell groups (defined by 'sources.use') to other cell groups (defined by 'targets.use')
+netVisual_bubble(bcg_cellchat, remove.isolate = FALSE, font.size = 16, pairLR.use = pairLR.MHC)
+
+```
+
+```{r, fig.width = 10, fig.height= 10}
+# show all the significant interactions (L-R pairs) from some cell groups (defined by 'sources.use') to other cell groups (defined by 'targets.use')
+# show all the interactions sending from Inflam.FIB
+netVisual_chord_gene(bcg_cellchat, sources.use = 1, targets.use = c(2:8), lab.cex = 0.7,legend.pos.y = 30, color.use = my_cols)
+```
+
+### Compute the network centrality scores
+```{r, fig.width = 12, fig.height= 12}
+
+bcg_cellchat <- netAnalysis_computeCentrality(bcg_cellchat, slot.name = "netP") 
+
+# the slot 'netP' means the inferred intercellular communication network of signaling pathways
+
+# Visualize the computed centrality scores using heatmap, allowing ready identification of major signaling roles of cell groups
+netAnalysis_signalingRole_network(bcg_cellchat, signaling = pathways.show, width = 8, height = 2.5, font.size = 10, color.use = my_cols)
+
+```
+
+### Signaling role analysis on the aggregated cell-cell communication network from all signaling pathways
+```{r, fig.width = 16, fig.height= 14}
+
+ht1 <- netAnalysis_signalingRole_heatmap(bcg_cellchat, pattern = "outgoing", color.use = my_cols, width = 14, height = 10, font.size = 10)
+ht2 <- netAnalysis_signalingRole_heatmap(bcg_cellchat, pattern = "incoming", color.use = my_cols, width = 14, height = 10, font.size = 10)
+ht1 + ht2
+```
+
+## Identify and visualize communication patterns (outgoing signal)
+```{r, fig.width = 10, fig.height= 10}
+selectK(bcg_cellchat, pattern = "outgoing")
+```
+
+```{r, fig.width = 10, fig.height= 10}
+nPatterns = 3
+bcg_cellchat <- identifyCommunicationPatterns(bcg_cellchat, pattern = "outgoing", k = nPatterns, width = 3, height = 12, font.size = 8)
+
+# river plot
+netAnalysis_river(bcg_cellchat, pattern = "outgoing", color.use = my_cols)
+
+# dot plot
+netAnalysis_dot(bcg_cellchat, pattern = "outgoing", color.use = my_cols)
+```
+
+## Identify and visualize communication patterns (incoming signal)
+```{r, fig.width = 10, fig.height= 10}
+selectK(bcg_cellchat, pattern = "incoming")
+```
+
+```{r, fig.width = 10, fig.height= 10}
+nPatterns = 3
+bcg_cellchat <- identifyCommunicationPatterns(bcg_cellchat, pattern = "incoming", k = nPatterns, width = 3, height = 12, font.size = 8)
+
+# river plot
+netAnalysis_river(bcg_cellchat, pattern = "incoming", color.use = my_cols)
+
+# dot plot
+netAnalysis_dot(bcg_cellchat, pattern = "incoming", color.use = my_cols)
+```
+
+```{r, fig.width = 12, fig.height= 10}
+bcg_cellchat <- computeNetSimilarity(bcg_cellchat, type = "functional")
+bcg_cellchat <- netEmbedding(bcg_cellchat, type = "functional")
+#> Manifold learning of the signaling networks for a single dataset
+bcg_cellchat <- netClustering(bcg_cellchat, type = "functional")
+#> Classification learning of the signaling networks for a single dataset
+# Visualization in 2D-space
+netVisual_embedding(bcg_cellchat, type = "functional", label.size = 3.5, color.use = my_cols)
+```
+
+## NTM + BCG 
+
+### my colors
+
+```{r}
+my_cols <- c('B cells'='#F8766D','DC'='#39568CFF','Endothelial cells'='#CD9600','Epithelial cells'='#00C19A','Fibroblasts'= "#C77CFF",
+    'Macrophages'='#00A9FF','Monocytes'='#0CB702', 'Stromal cells'='#FF61CC')
+```
+
+
+```{r, fig.width = 10, fig.height= 10}
+ntm_bcg_cellchat <- createCellChat(object = ntm_bcg_analyzed, group.by = "ref.data")
+
+CellChatDB <- CellChatDB.mouse
+showDatabaseCategory(CellChatDB)
+CellChatDB.use <- CellChatDB
+ntm_bcg_cellchat@DB <- CellChatDB.use
+
+
+ntm_bcg_cellchat <- subsetData(ntm_bcg_cellchat)
+ntm_bcg_cellchat <- identifyOverExpressedGenes(ntm_bcg_cellchat)
+ntm_bcg_cellchat <- identifyOverExpressedInteractions(ntm_bcg_cellchat)
+
+
+ntm_bcg_cellchat <- computeCommunProb(ntm_bcg_cellchat)
+ntm_bcg_cellchat <- filterCommunication(ntm_bcg_cellchat, min.cells = 10)
+ntm_bcg_cellchat <- computeCommunProbPathway(ntm_bcg_cellchat)
+ntm_bcg_cellchat <- aggregateNet(ntm_bcg_cellchat)
+
+groupSize <- as.numeric(table(ntm_bcg_cellchat@idents))
+par(mfrow = c(1,2), xpd=TRUE)
+netVisual_circle(ntm_bcg_cellchat@net$count, vertex.weight = groupSize, weight.scale = T, label.edge= F, title.name = "Number of interactions", color.use = my_cols)
+netVisual_circle(ntm_bcg_cellchat@net$weight, vertex.weight = groupSize, weight.scale = T, label.edge= F, title.name = "Interaction weights/strength", color.use = my_cols)
+
+
+# See interaction of each cell type with the another
+
+mat1 <- ntm_bcg_cellchat@net$weight
+par(mfrow = c(3,4), xpd=TRUE)
+for (i in 1:nrow(mat1)) {
+  mat2 <- matrix(0, nrow = nrow(mat1), ncol = ncol(mat1), dimnames = dimnames(mat1))
+  mat2[i, ] <- mat1[i, ]
+  netVisual_circle(mat2, vertex.weight = groupSize, weight.scale = T, edge.weight.max = max(mat1), title.name = rownames(mat1)[i], color.use = my_cols)
+}
+
+```
+
+### Visualize signalling pathways in each cell
+
+```{r, fig.width = 10, fig.height= 10}
+
+# Identify signaling pathways showing significant communications 
+ntm_bcg_cellchat@netP$pathways
+
+# Evaluate one of the pathways
+pathways.show <- c( "LT", "WNT", "PROS", "TWEAK", "ALCAM", "CD6", "CSF", "TNF", "CCL", "GALECTIN") 
+vertex.receiver = seq(2,5) # a numeric vector. 
+netVisual_aggregate(ntm_bcg_cellchat, signaling = pathways.show,  vertex.receiver = vertex.receiver, color.use = my_cols)
+
+# Chord diagram
+par(mfrow=c(1,1))
+netVisual_aggregate(ntm_bcg_cellchat, signaling = pathways.show, layout = "chord", color.use = my_cols)
+
+
+# Heatmap
+par(mfrow=c(1,1))
+netVisual_heatmap(ntm_bcg_cellchat, signaling = pathways.show, color.heatmap = "Reds", color.use = my_cols)
+
+```
+
+### Compute the contribution of each ligand-receptor pair to the overall signaling pathway
+
+```{r, fig.width = 10, fig.height= 10}
+
+netAnalysis_contribution(ntm_bcg_cellchat, signaling = pathways.show)
+
+pairLR.MHC <- extractEnrichedLR(ntm_bcg_cellchat, signaling = pathways.show, geneLR.return = FALSE)
+LR.show <- pairLR.MHC[1,] # show one ligand-receptor pair
+
+# Hierarchy plot
+vertex.receiver = seq(1,4) # a numeric vector
+netVisual_individual(ntm_bcg_cellchat, signaling = pathways.show,  pairLR.use = LR.show, vertex.receiver = vertex.receiver, color.use = my_cols)
+
+```
+
+### Visualize cell-cell communication mediated by multiple signaling pathways
+```{r, fig.width = 12, fig.height= 14}
+
+# show all the significant interactions (L-R pairs) from some cell groups (defined by 'sources.use') to other cell groups (defined by 'targets.use')
+netVisual_bubble(ntm_bcg_cellchat, remove.isolate = FALSE, font.size = 14, pairLR.use = pairLR.MHC)
+
+```
+
+```{r, fig.width = 10, fig.height= 10}
+# show all the significant interactions (L-R pairs) from some cell groups (defined by 'sources.use') to other cell groups (defined by 'targets.use')
+# show all the interactions sending from Inflam.FIB
+netVisual_chord_gene(ntm_bcg_cellchat, sources.use = 1, targets.use = c(2:8), lab.cex = 0.7, legend.pos.y = 30, color.use = my_cols)
+```
+
+### Compute the network centrality scores
+```{r, fig.width = 12, fig.height= 12}
+
+ntm_bcg_cellchat <- netAnalysis_computeCentrality(ntm_bcg_cellchat, slot.name = "netP") 
+
+# the slot 'netP' means the inferred intercellular communication network of signaling pathways
+
+# Visualize the computed centrality scores using heatmap, allowing ready identification of major signaling roles of cell groups
+netAnalysis_signalingRole_network(ntm_bcg_cellchat, signaling = pathways.show, width = 8, height = 2.5, font.size = 10, color.use = my_cols)
+
+```
+
+### Signaling role analysis on the aggregated cell-cell communication network from all signaling pathways
+```{r, fig.width = 16, fig.height= 14}
+
+ht1 <- netAnalysis_signalingRole_heatmap(ntm_bcg_cellchat, pattern = "outgoing", color.use = my_cols, width = 14, height = 12, font.size = 8)
+ht2 <- netAnalysis_signalingRole_heatmap(ntm_bcg_cellchat, pattern = "incoming", color.use = my_cols, width = 14, height = 12, font.size = 8)
+ht1 + ht2
+```
+
+## Identify and visualize communication patterns (outgoing signal)
+```{r, fig.width = 10, fig.height= 10}
+selectK(ntm_bcg_cellchat, pattern = "outgoing")
+```
+
+```{r, fig.width = 10, fig.height= 10}
+nPatterns = 3
+ntm_bcg_cellchat <- identifyCommunicationPatterns(ntm_bcg_cellchat, pattern = "outgoing", k = nPatterns, width = 3, height = 13, font.size = 8)
+
+# river plot
+netAnalysis_river(ntm_bcg_cellchat, pattern = "outgoing", color.use = my_cols)
+
+# dot plot
+netAnalysis_dot(ntm_bcg_cellchat, pattern = "outgoing", color.use = my_cols)
+```
+
+## Identify and visualize communication patterns (incoming signal)
+```{r, fig.width = 10, fig.height= 10}
+selectK(ntm_bcg_cellchat, pattern = "incoming")
+```
+
+```{r, fig.width = 10, fig.height= 10}
+nPatterns = 3
+ntm_bcg_cellchat <- identifyCommunicationPatterns(ntm_bcg_cellchat, pattern = "incoming", k = nPatterns, width = 3, height = 13, font.size = 8)
+
+# river plot
+netAnalysis_river(ntm_bcg_cellchat, pattern = "incoming", color.use = my_cols)
+
+# dot plot
+netAnalysis_dot(ntm_bcg_cellchat, pattern = "incoming", color.use = my_cols)
+```
+
+```{r, fig.width = 12, fig.height= 10}
+ntm_bcg_cellchat <- computeNetSimilarity(ntm_bcg_cellchat, type = "functional")
+ntm_bcg_cellchat <- netEmbedding(ntm_bcg_cellchat, type = "functional")
+#> Manifold learning of the signaling networks for a single dataset
+ntm_bcg_cellchat <- netClustering(ntm_bcg_cellchat, type = "functional")
+#> Classification learning of the signaling networks for a single dataset
+# Visualization in 2D-space
+netVisual_embedding(ntm_bcg_cellchat, type = "functional", label.size = 3.5, color.use = my_cols)
+```
+
+## merge objects
+
+```{r}
+object.list <- list(saline_group = saline_cellchat, ntm_group = ntm_cellchat, bcg_group = bcg_cellchat, ntm_bcg_group = ntm_bcg_cellchat)
+cellchat <- mergeCellChat(object.list, add.names = names(object.list), cell.prefix = TRUE)
+```
+
+## compare interactions
+
+```{r}
+
+my_cols_group <- c("red2", "green4", "grey59", "dodgerblue3")
+
+gg1 <- compareInteractions(cellchat, show.legend = F, group = c(1,2,3,4), color.use = my_cols_group)
+gg2 <- compareInteractions(cellchat, show.legend = F, group = c(1,2,3,4), measure = "weight", color.use = my_cols_group)
+gg1 + gg2
+```
