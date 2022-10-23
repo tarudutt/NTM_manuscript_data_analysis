@@ -1,0 +1,604 @@
+---
+title: "Mucosal exposure to nontuberculous mycobacteria elicits B-cell mediated immunity
+  against pulmonary tuberculosis"
+author: "Taru Dutt"
+date: "2022-10-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error = FALSE, message = FALSE, warning = FALSE)
+```
+
+## install packages
+
+```{r}
+#BiocManager::install("clusterProfiler")
+#install.packages("enrichplot")
+#installed.packages("patchwork")
+#BiocManager::install("SingleR")
+#BiocManager::install("celldex")
+#BiocManager::install("ensembldb")
+#BiocManager::install('limma')
+#BiocManager::install("DESeq2")
+#organism = "org.Mm.eg.db"
+#BiocManager::install(organism)
+#BiocManager::install("pathview")
+#install.packages("Seurat")
+#install.packages("remotes")
+#remotes::install_github("satijalab/seurat")
+#BiocManager::install("rhdf5")
+#install.packages("hdf5r")
+#BiocManager::install("NeuCA")
+#install.packages('devtools')
+#install_github("ggjlab/scMCA")
+#install.packages("pheatmap")
+#BiocManager::install("scater")
+#devtools::install_github("sqjin/CellChat")
+#BiocManager::install("ComplexHeatmap")
+```
+
+
+## Load libraries
+
+In this step, we are loading the libraries which are required for analysis and plotting of the data.
+
+
+```{r}
+library(Seurat)
+library(devtools)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(clusterProfiler)
+library(enrichplot)
+# we use ggplot2 to add x axis labels (ex: ridgeplot)
+library(stringr)
+library(celldex)
+library(ensembldb)
+library(SingleR)
+library(limma)
+library(DESeq2)
+library(org.Mm.eg.db)
+library(rhdf5)
+library(hdf5r)
+library(pheatmap)
+library(ComplexHeatmap)
+library(CellChat)
+library(patchwork)
+options(stringsAsFactors = FALSE)
+library(NMF)
+library(ggalluvial)
+
+```
+
+## set the colors of the cell types
+
+```{r}
+my_cols <- c('B cells'='#F8766D','DC'='#39568CFF','Endothelial cells'='#CD9600','Epithelial cells'='#00C19A','Fibroblasts'= "#C77CFF", "ILC" = "grey",
+    'Macrophages'='#00A9FF','Monocytes'='#0CB702', "Neutrophils" = "Darkred", 'Stromal cells'='#FF61CC')
+```
+
+## load data for mouse 1 and mouse 2
+
+```{r}
+# Mouse 1
+saline_mouse_1 <- "/Volumes/Seagate_4TB/spatial_ntm_samples/demultiplexed/Saline_sample_round_one/outs/"
+
+list.files(saline_mouse_1)
+
+saline_mouse_1_data <- Load10X_Spatial(
+  saline_mouse_1,
+  filename = "filtered_feature_bc_matrix.h5",
+  assay = "spatial",
+  slice = "saline",
+  filter.matrix = TRUE,
+  to.upper = FALSE,
+  image = NULL)
+
+# Mouse 2
+saline_mouse_2 <- "/Volumes/Seagate_4TB/spatial_ntm_samples/demultiplexed/Saline_sample_round_two/outs/"
+
+list.files(saline_mouse_2)
+
+saline_mouse_2_data <- Load10X_Spatial(
+ saline_mouse_2,
+  filename = "filtered_feature_bc_matrix.h5",
+  assay = "spatial",
+  slice = "saline",
+  filter.matrix = TRUE,
+  to.upper = FALSE,
+  image = NULL)
+
+
+```
+
+
+## data preprocessing
+
+```{r}
+# Mouse 1
+saline_mouse_1_data <- SCTransform(saline_mouse_1_data, assay = "spatial", verbose = FALSE)
+
+# Mouse 2
+saline_mouse_2_data <- SCTransform(saline_mouse_2_data, assay = "spatial", verbose = FALSE)
+```
+
+## Visualization of lymphoid follicle markers
+### Mouse 1
+
+```{r, fig.width = 10, fig.height= 10}
+p1 <- SpatialFeaturePlot(saline_mouse_1_data, features = "Cd19", alpha = c(0.1, 1.5), pt.size.factor = 1.5)
+p2 <- SpatialFeaturePlot(saline_mouse_1_data, features = "Igha", alpha = c(0.1, 1), pt.size.factor = 1.5)
+p3 <- SpatialFeaturePlot(saline_mouse_1_data, features = "Bcl6", alpha = c(0.1, 1), pt.size.factor = 1.5)
+p4 <- SpatialFeaturePlot(saline_mouse_1_data, features = "Lta", alpha = c(0.1, 1.5), pt.size.factor = 1.5)
+p5 <- SpatialFeaturePlot(saline_mouse_1_data, features = "Ltb", alpha = c(0.1, 1.5), pt.size.factor = 1.5)
+p6 <- SpatialFeaturePlot(saline_mouse_1_data, features = "Cd4", alpha = c(0.1, 1.5), pt.size.factor = 1.5)
+p7 <- SpatialFeaturePlot(saline_mouse_1_data, features = "Mki67", alpha = c(0.1, 1.5), pt.size.factor = 1.5)
+p8 <- SpatialFeaturePlot(saline_mouse_1_data, features = "Cxcr5", alpha = c(0.1, 1.5), pt.size.factor = 1.5)
+
+p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8
+```
+
+### Mouse 2
+
+```{r, fig.width = 10, fig.height= 10}
+
+p1 <- SpatialFeaturePlot(saline_mouse_2_data, features = "Cd19", alpha = c(0.1, 1.5), pt.size.factor = 1.5)
+p2 <- SpatialFeaturePlot(saline_mouse_2_data, features = "Igha", alpha = c(0.1, 1), pt.size.factor = 1.5)
+p3 <- SpatialFeaturePlot(saline_mouse_2_data, features = "Bcl6", alpha = c(0.1, 1), pt.size.factor = 1.5)
+p4 <- SpatialFeaturePlot(saline_mouse_2_data, features = "Lta", alpha = c(0.1, 1.5), pt.size.factor = 1.5)
+p5 <- SpatialFeaturePlot(saline_mouse_2_data, features = "Ltb", alpha = c(0.1, 1.5), pt.size.factor = 1.5)
+p6 <- SpatialFeaturePlot(saline_mouse_2_data, features = "Cd4", alpha = c(0.1, 1.5), pt.size.factor = 1.5)
+p7 <- SpatialFeaturePlot(saline_mouse_2_data, features = "Mki67", alpha = c(0.1, 1.5), pt.size.factor = 1.5)
+p8 <- SpatialFeaturePlot(saline_mouse_2_data, features = "Cxcr5", alpha = c(0.1, 1.5), pt.size.factor = 1.5)
+
+p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8
+```
+
+## dimensionality reduction and clustering
+
+```{r, fig.width = 10, fig.height= 10}
+# Mouse 1
+saline_mouse_1_analyzed <- RunPCA(saline_mouse_1_data, assay = "SCT", verbose = FALSE)
+saline_mouse_1_analyzed <- FindNeighbors(saline_mouse_1_analyzed, reduction = "pca", dims = 1:5)
+saline_mouse_1_analyzed <- FindClusters(saline_mouse_1_analyzed, verbose = FALSE, resolution = 0.8)
+saline_mouse_1_analyzed <- RunUMAP(saline_mouse_1_analyzed, reduction = "pca", dims = 1:5)
+
+# Mouse 2
+saline_mouse_2_analyzed <- RunPCA(saline_mouse_2_data, assay = "SCT", verbose = FALSE)
+saline_mouse_2_analyzed <- FindNeighbors(saline_mouse_2_analyzed, reduction = "pca", dims = 1:5)
+saline_mouse_2_analyzed <- FindClusters(saline_mouse_2_analyzed, verbose = FALSE, resolution = 0.8)
+saline_mouse_2_analyzed <- RunUMAP(saline_mouse_2_analyzed, reduction = "pca", dims = 1:5)
+```
+
+## labelling clusters using SingleR pipeline
+
+```{r}
+# First convert the seurat object to single cell experiment object (otherwise the SingleR pipeline will not work)
+
+# Mouse 1
+saline_mouse_1_analyzed.sce <- as.SingleCellExperiment(saline_mouse_1_analyzed)
+
+# Mouse 2
+saline_mouse_2_analyzed.sce <- as.SingleCellExperiment(saline_mouse_2_analyzed)
+
+#create reference data
+
+ref.data <- celldex::ImmGenData()
+
+# run singleR pipeline to find the cell types
+
+## Mouse 1
+cell_types_mouse_1 <- SingleR(test=saline_mouse_1_analyzed.sce, assay.type.test=1, 
+    ref=ref.data, labels=ref.data$label.main)
+
+## Mouse 2
+cell_types_mouse_2 <- SingleR(test=saline_mouse_2_analyzed.sce, assay.type.test=1, 
+    ref=ref.data, labels=ref.data$label.main)
+
+```
+
+## Check if the cell types are labelled with high accuracy
+
+```{r}
+# view cell types
+
+# Mouse 1
+table(cell_types_mouse_1$labels)
+
+#checking cell types Mouse 1
+
+plotScoreHeatmap(cell_types_mouse_1)
+plotDeltaDistribution(cell_types_mouse_1)
+summary(is.na(cell_types_mouse_1$pruned.labels))
+
+# Mouse 2
+table(cell_types_mouse_2$labels)
+
+#checking cell types Mouse 2
+
+plotScoreHeatmap(cell_types_mouse_2)
+plotDeltaDistribution(cell_types_mouse_2)
+summary(is.na(cell_types_mouse_2$pruned.labels))
+
+
+```
+
+## merging metadata of cell types to seurat object
+
+```{r}
+# Mouse 1
+saline_mouse_1_analyzed[["ref.data"]] <- cell_types_mouse_1$labels
+
+# Mouse 2
+saline_mouse_2_analyzed[["ref.data"]] <- cell_types_mouse_2$labels
+```
+
+## Plot umap and spatial plot to localize each cell type
+
+### Mouse 1
+
+```{r, fig.width = 16, fig.height= 10}
+
+p1 <- DimPlot(saline_mouse_1_analyzed, group.by = c("ref.data"), reduction = "umap",label = F, pt.size = 1.5, label.size = 5, cols = my_cols)
+
+p2 <- SpatialDimPlot(saline_mouse_1_analyzed, group.by = c("ref.data"), label = FALSE, label.size = 5, cols = my_cols)
+
+p1 + p2
+```
+
+### Mouse 2
+
+```{r, fig.width = 16, fig.height= 10}
+
+p1 <- DimPlot(saline_mouse_2_analyzed, group.by = c("ref.data"), reduction = "umap",label = F, pt.size = 1.5, label.size = 5, cols = my_cols)
+
+p2 <- SpatialDimPlot(saline_mouse_2_analyzed, group.by = c("ref.data"), label = FALSE, label.size = 5, cols = my_cols)
+
+p1 + p2
+```
+
+
+## Plot violin plot with top markers associated with B cells and lymphoid follicles
+
+### Mouse 1
+
+```{r, fig.width = 14, fig.height= 10}
+VlnPlot(saline_mouse_1_analyzed, group.by = c("ref.data"), features = c("Nos2", "Thbs1", "Cxcl10", "Tgfbi"), cols =  my_cols, ncol = 2)
+
+```
+
+### Mouse 2
+
+```{r, fig.width = 14, fig.height= 10}
+VlnPlot(saline_mouse_2_analyzed, group.by = c("ref.data"), features = c("Cxcr5", "Mki67", "Ltb", "Cd38", "Ccr6", "Tnfrsf13c"), cols =  my_cols)
+```
+
+## find markers in each cluster
+
+### Mouse 1
+```{r}
+
+B_cell_mouse_1 <- FindMarkers(saline_mouse_1_analyzed, group.by = "ref.data", ident.1 = "B cells", min.pct = 0.25)
+head(B_cell_mouse_1, n = 10)
+write.csv(B_cell_mouse_1, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/B_cell_mouse_1.csv")
+
+DC_mouse_1 <- FindMarkers(saline_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "DC", min.pct = 0.25)
+head(DC_mouse_1, n = 10)
+write.csv(DC_mouse_1, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/DC_mouse_1.csv")
+
+Stromal_cells_mouse_1 <- FindMarkers(saline_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Stromal cells", min.pct = 0.25)
+head(Stromal_cells_mouse_1, n = 10)
+write.csv(Stromal_cells_mouse_1, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/Stromal_cells_mouse_1.csv")
+
+
+Endothelial_cells_mouse_1 <- FindMarkers(saline_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Endothelial cells", min.pct = 0.25)
+head(Endothelial_cells_mouse_1, n = 10)
+write.csv(Endothelial_cells_mouse_1, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/Endothelial_cells_mouse_1.csv")
+
+Epithelial_cell_mouse_1 <- FindMarkers(saline_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Epithelial cells", min.pct = 0.25)
+head(Epithelial_cell_mouse_1, n = 10)
+write.csv(Epithelial_cell_mouse_1, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/ntm+bcg/Epithelial_cell_mouse_1.csv")
+
+Fibroblasts_mouse_1 <- FindMarkers(saline_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Fibroblasts", min.pct = 0.25)
+head(Fibroblasts_mouse_1, n = 10)
+  write.csv(Fibroblasts_mouse_1, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/Fibroblasts_mouse_1.csv")
+  
+Macrophages_mouse_1 <- FindMarkers(saline_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Macrophages", min.pct = 0.25)
+  head(Macrophages_mouse_1, n = 10)
+write.csv(Macrophages_mouse_1, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/Macrophages_mouse_1.csv")
+
+```
+
+### Mouse 2
+```{r}
+
+B_cell_mouse_2 <- FindMarkers(saline_mouse_2_analyzed, group.by = "ref.data", ident.1 = "B cells", min.pct = 0.25)
+head(B_cell_mouse_2, n = 10)
+write.csv(B_cell_mouse_2, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/B_cell_mouse_2.csv")
+
+DC_mouse_2 <- FindMarkers(saline_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "DC", min.pct = 0.25)
+head(DC_mouse_2, n = 10)
+write.csv(DC_mouse_2, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/DC_mouse_2.csv")
+
+Stromal_cells_mouse_2 <- FindMarkers(saline_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Stromal cells", min.pct = 0.25)
+head(Stromal_cells_mouse_2, n = 10)
+write.csv(Stromal_cells_mouse_2, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/Stromal_cells_mouse_2.csv")
+
+
+Endothelial_cells_mouse_2 <- FindMarkers(saline_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Endothelial cells", min.pct = 0.25)
+head(Endothelial_cells_mouse_2, n = 10)
+write.csv(Endothelial_cells_mouse_2, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/Endothelial_cells_mouse_2.csv")
+
+Epithelial_cell_mouse_2 <- FindMarkers(saline_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Epithelial cells", min.pct = 0.25)
+head(Epithelial_cell_mouse_2, n = 10)
+write.csv(Epithelial_cell_mouse_2, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/Epithelial_cell_mouse_2.csv")
+
+Fibroblasts_mouse_2 <- FindMarkers(saline_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Fibroblasts", min.pct = 0.25)
+head(Fibroblasts_mouse_2, n = 10)
+  write.csv(Fibroblasts_mouse_2, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/Fibroblasts_mouse_2.csv")
+  
+Macrophages_mouse_2 <- FindMarkers(saline_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Macrophages", min.pct = 0.25)
+  head(Macrophages_mouse_2, n = 10)
+write.csv(Macrophages_mouse_2, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/Macrophages_mouse_2.csv")
+
+Monocytes_mouse_2 <- FindMarkers(saline_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Monocytes", min.pct = 0.25)
+  head(Monocytes_mouse_2, n = 10)
+write.csv(Monocytes_mouse_2, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/Monocytes_mouse_2.csv")
+```
+
+
+```{r}
+Macrophage_cell_deseq <- FindMarkers(saline_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Macrophages", test.use = "DESeq2")
+write.csv(Macrophage_cell_deseq, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/Macrophage_cell_deseq.csv")
+```
+
+## Cell-cell interaction using cell chat
+
+```{r, fig.width = 10, fig.height= 10}
+saline_cellchat <- createCellChat(object = saline_mouse_1_analyzed, group.by = "ref.data")
+
+CellChatDB <- CellChatDB.mouse
+showDatabaseCategory(CellChatDB)
+CellChatDB.use <- CellChatDB
+saline_cellchat@DB <- CellChatDB.use
+
+
+saline_cellchat <- subsetData(saline_cellchat)
+saline_cellchat <- identifyOverExpressedGenes(saline_cellchat)
+saline_cellchat <- identifyOverExpressedInteractions(saline_cellchat)
+
+
+saline_cellchat <- computeCommunProb(saline_cellchat)
+saline_cellchat <- filterCommunication(saline_cellchat, min.cells = 10)
+saline_cellchat <- computeCommunProbPathway(saline_cellchat)
+saline_cellchat <- aggregateNet(saline_cellchat)
+
+groupSize <- as.numeric(table(saline_cellchat@idents))
+par(mfrow = c(1,2), xpd=TRUE)
+netVisual_circle(saline_cellchat@net$count, vertex.weight = groupSize, weight.scale = T, label.edge= F, title.name = "Number of interactions")
+netVisual_circle(saline_cellchat@net$weight, vertex.weight = groupSize, weight.scale = T, label.edge= F, title.name = "Interaction weights/strength")
+
+
+# See interaction of each cell type with the another
+
+mat1 <- saline_cellchat@net$weight
+par(mfrow = c(3,4), xpd=TRUE)
+for (i in 1:nrow(mat1)) {
+  mat2 <- matrix(0, nrow = nrow(mat1), ncol = ncol(mat1), dimnames = dimnames(mat1))
+  mat2[i, ] <- mat1[i, ]
+  netVisual_circle(mat2, vertex.weight = groupSize, weight.scale = T, edge.weight.max = max(mat1), title.name = rownames(mat1)[i], color.use = my_cols)
+}
+
+```
+
+##Visualize signalling pathways in each cell
+
+```{r, fig.width = 10, fig.height= 10}
+
+# Identify signaling pathways showing significant communications 
+saline_cellchat@netP$pathways
+
+# Evaluate one of the pathways
+pathways.show <- c("MHC-II") 
+vertex.receiver = seq(2,5) # a numeric vector. 
+netVisual_aggregate(saline_cellchat, signaling = pathways.show,  vertex.receiver = vertex.receiver, color.use = my_cols)
+
+# Chord diagram
+par(mfrow=c(1,1))
+netVisual_aggregate(saline_cellchat, signaling = pathways.show, layout = "chord", color.use = my_cols)
+
+
+# Heatmap
+par(mfrow=c(1,1))
+netVisual_heatmap(saline_cellchat, signaling = pathways.show, color.heatmap = "Reds", color.use = my_cols)
+
+```
+
+### Compute the contribution of each ligand-receptor pair to the overall signaling pathway
+
+```{r, fig.width = 10, fig.height= 10}
+
+netAnalysis_contribution(saline_cellchat, signaling = pathways.show)
+
+pairLR.MHC <- extractEnrichedLR(saline_cellchat, signaling = pathways.show, geneLR.return = FALSE)
+LR.show <- pairLR.MHC[1,] # show one ligand-receptor pair
+
+# Hierarchy plot
+vertex.receiver = seq(1,4) # a numeric vector
+netVisual_individual(saline_cellchat, signaling = pathways.show,  pairLR.use = LR.show, vertex.receiver = vertex.receiver, color.use = my_cols)
+
+```
+
+## Visualize cell-cell communication mediated by multiple signaling pathways
+```{r, fig.width = 12, fig.height= 12}
+
+# show all the significant interactions (L-R pairs) from some cell groups (defined by 'sources.use') to other cell groups (defined by 'targets.use')
+netVisual_bubble(saline_cellchat, sources.use = 1, targets.use = c(2:8), remove.isolate = FALSE)
+
+```
+
+```{r, fig.width = 10, fig.height= 10}
+# show all the significant interactions (L-R pairs) from some cell groups (defined by 'sources.use') to other cell groups (defined by 'targets.use')
+# show all the interactions sending from Inflam.FIB
+netVisual_chord_gene(saline_cellchat, sources.use = 1, targets.use = c(2:8), lab.cex = 0.5,legend.pos.y = 30, color.use = my_cols)
+```
+
+### Compute the network centrality scores
+```{r, fig.width = 12, fig.height= 12}
+
+saline_cellchat <- netAnalysis_computeCentrality(saline_cellchat, slot.name = "netP") 
+
+# the slot 'netP' means the inferred intercellular communication network of signaling pathways
+
+# Visualize the computed centrality scores using heatmap, allowing ready identification of major signaling roles of cell groups
+netAnalysis_signalingRole_network(saline_cellchat, signaling = pathways.show, width = 8, height = 2.5, font.size = 10, color.use = my_cols)
+
+```
+
+### Signaling role analysis on the aggregated cell-cell communication network from all signaling pathways
+```{r, fig.width = 16, fig.height= 14}
+
+ht1 <- netAnalysis_signalingRole_heatmap(saline_cellchat, pattern = "outgoing", color.use = my_cols)
+ht2 <- netAnalysis_signalingRole_heatmap(saline_cellchat, pattern = "incoming", color.use = my_cols)
+ht1 + ht2
+```
+
+## Identify and visualize communication patterns (outgoing signal)
+```{r, fig.width = 10, fig.height= 10}
+selectK(saline_cellchat, pattern = "outgoing")
+```
+
+```{r, fig.width = 10, fig.height= 10}
+nPatterns = 3
+saline_cellchat <- identifyCommunicationPatterns(saline_cellchat, pattern = "outgoing", k = nPatterns)
+
+# river plot
+netAnalysis_river(saline_cellchat, pattern = "outgoing", color.use = my_cols)
+
+# dot plot
+netAnalysis_dot(saline_cellchat, pattern = "outgoing", color.use = my_cols)
+```
+
+## Identify and visualize communication patterns (incoming signal)
+```{r, fig.width = 10, fig.height= 10}
+selectK(saline_cellchat, pattern = "incoming")
+```
+
+```{r, fig.width = 10, fig.height= 10}
+nPatterns = 3
+saline_cellchat <- identifyCommunicationPatterns(saline_cellchat, pattern = "incoming", k = nPatterns)
+
+# river plot
+netAnalysis_river(saline_cellchat, pattern = "incoming", color.use = my_cols)
+
+# dot plot
+netAnalysis_dot(saline_cellchat, pattern = "incoming", color.use = my_cols)
+```
+
+```{r, fig.width = 12, fig.height= 10}
+saline_cellchat <- computeNetSimilarity(saline_cellchat, type = "functional")
+saline_cellchat <- netEmbedding(saline_cellchat, type = "functional")
+#> Manifold learning of the signaling networks for a single dataset
+saline_cellchat <- netClustering(saline_cellchat, type = "functional")
+#> Classification learning of the signaling networks for a single dataset
+# Visualization in 2D-space
+netVisual_embedding(saline_cellchat, type = "functional", label.size = 3.5, color.use = my_cols)
+```
+
+## Differential gene expression
+
+```{r}
+
+B_cell_deseq <- FindMarkers(saline_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "B cells", test.use = "DESeq2")
+write.csv(B_cell_deseq, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/B_cell_deseq.csv")
+
+DC_deseq <- FindMarkers(saline_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "DC", test.use = "DESeq2")
+write.csv(DC_deseq, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/DC_deseq.csv")
+
+Stromal_cells_deseq <- FindMarkers(saline_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Stromal cells", test.use = "DESeq2")
+write.csv(Stromal_cells_deseq, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/Stromal_cells_deseq.csv")
+
+
+Endothelial_cells_deseq <- FindMarkers(saline_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Endothelial cells", test.use = "DESeq2")
+write.csv(Endothelial_cells_deseq, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/Endothelial_cells_deseq.csv")
+
+Epithelial_cell_deseq <- FindMarkers(saline_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Epithelial cells", test.use = "DESeq2")
+write.csv(Epithelial_cell_deseq, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/ntm+bcg/Epithelial_cell_deseq.csv")
+
+Fibroblasts_mouse_deseq <- FindMarkers(saline_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Fibroblasts", test.use = "DESeq2")
+  write.csv(Fibroblasts_mouse_deseq, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/Fibroblasts_mouse_deseq.csv")
+  
+Macrophages_mouse_deseq <- FindMarkers(saline_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Macrophages", test.use = "DESeq2")
+write.csv(Macrophages_mouse_deseq, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/Macrophages_mouse_deseq.csv")
+
+```
+
+# Gene set enrichment
+
+```{r}
+organism = org.Mm.eg.db
+```
+
+## prepare input data for gene set enrichment
+
+### B cell
+```{r}
+# reading in data from deseq2
+B_df = read.csv("/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/saline/B_cell_deseq.csv", header=TRUE)
+
+# we want the log2 fold change 
+B_original_gene_list <- B_df$avg_log2FC
+
+# name the vector
+names(B_original_gene_list) <- B_df$X
+
+# omit any NA values 
+B_gene_list<-na.omit(B_original_gene_list)
+
+# sort the list in decreasing order (required for clusterProfiler)
+B_gene_list = sort(B_gene_list, decreasing = TRUE)
+```
+
+## Gene set enrichment
+
+```{r}
+#gene set enrichment function for B cell cluster
+
+B_gse <- gseGO(geneList=B_gene_list, 
+             ont ="ALL", 
+             keyType = "SYMBOL", 
+             minGSSize = 3, 
+             maxGSSize = 800, 
+             pvalueCutoff = 0.05, 
+             verbose = TRUE, 
+             OrgDb = organism, 
+             pAdjustMethod = "none",
+             eps = 0.0)
+
+```
+
+## plot graph for upregulated and downregulated genes
+
+```{r, fig.width = 12, fig.height= 10}
+require(DOSE)
+gse_dataframe <- as.data.frame(gse)
+
+## count the gene number
+gene_count<- gse@result %>% group_by(ID) %>% summarise(count = sum(str_count(core_enrichment, "/")) + 1)
+
+## merge with the original dataframe
+gse_dataframe<- left_join(gse@result, gene_count, by = "ID") %>% mutate(GeneRatio = count/setSize)
+
+write.csv(gse_dataframe, "/Volumes/Seagate_4TB/spatial_data_analysis/gene_expression/ntm+bcg/gse_dataframe.csv")
+
+ggplot(gse_dataframe[c(3,9,17,21,27,29,41,58,59,63,89,102,109,118,136,139,145,163),],
+             aes(x = GeneRatio, y = Description)) + 
+             geom_point(aes(size = GeneRatio, color = p.adjust)) +
+             theme_bw(base_size = 14) +
+             scale_colour_gradient(limits=c(0, 0.10), low="red") +
+             ylab(NULL) +
+             ggtitle("GO pathway enrichment")
+```
+
