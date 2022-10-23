@@ -128,8 +128,8 @@ ntm_bcg_mouse_2_data <- Load10X_Spatial(
 
 ```
 
-
 ## data preprocessing
+SCTransform function will NormalizeData, FindVariableFeatures, and ScaleData workflow. Results are saved in a new assay (named SCT by default) with counts being (corrected) counts, and data being log1p(counts).
 
 ```{r}
 # Mouse 1
@@ -137,4 +137,346 @@ ntm_bcg_mouse_1_data <- SCTransform(ntm_bcg_mouse_1_data, assay = "spatial", ver
 
 # Mouse 2
 ntm_bcg_mouse_2_data <- SCTransform(ntm_bcg_mouse_2_data, assay = "spatial", verbose = FALSE)
+```
+
+## Visualization of lymphoid follicle markers
+### Mouse 1
+
+```{r, fig.width = 10, fig.height= 10}
+p1 <- SpatialFeaturePlot(ntm_bcg_mouse_1_data, features = "Cd19", alpha = c(0.1, 1.5), pt.size.factor = 1.8)
+p2 <- SpatialFeaturePlot(ntm_bcg_mouse_1_data, features = "Igha", alpha = c(0.1, 1), pt.size.factor = 1.8)
+p3 <- SpatialFeaturePlot(ntm_bcg_mouse_1_data, features = "Bcl6", alpha = c(0.1, 1), pt.size.factor = 1.8)
+p4 <- SpatialFeaturePlot(ntm_bcg_mouse_1_data, features = "Lta", alpha = c(0.1, 1.5), pt.size.factor = 1.8)
+p5 <- SpatialFeaturePlot(ntm_bcg_mouse_1_data, features = "Ltb", alpha = c(0.1, 1.5), pt.size.factor = 1.8)
+p6 <- SpatialFeaturePlot(ntm_bcg_mouse_1_data, features = "Cd4", alpha = c(0.1, 1.5), pt.size.factor = 1.8)
+p7 <- SpatialFeaturePlot(ntm_bcg_mouse_1_data, features = "Mki67", alpha = c(0.1, 1.5), pt.size.factor = 1.8)
+p8 <- SpatialFeaturePlot(ntm_bcg_mouse_1_data, features = "Cxcr5", alpha = c(0.1, 1.5), pt.size.factor = 1.8)
+
+p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8
+```
+
+### Mouse 2
+
+```{r, fig.width = 10, fig.height= 10}
+
+p1 <- SpatialFeaturePlot(ntm_bcg_mouse_2_data, features = "Cd19", alpha = c(0.1, 1.5), pt.size.factor = 1.5)
+p2 <- SpatialFeaturePlot(ntm_bcg_mouse_2_data, features = "Igha", alpha = c(0.1, 1), pt.size.factor = 1.5)
+p3 <- SpatialFeaturePlot(ntm_bcg_mouse_2_data, features = "Bcl6", alpha = c(0.1, 1), pt.size.factor = 1.5)
+p4 <- SpatialFeaturePlot(ntm_bcg_mouse_2_data, features = "Lta", alpha = c(0.1, 1.5), pt.size.factor = 1.5)
+p5 <- SpatialFeaturePlot(ntm_bcg_mouse_2_data, features = "Ltb", alpha = c(0.1, 1.5), pt.size.factor = 1.5)
+p6 <- SpatialFeaturePlot(ntm_bcg_mouse_2_data, features = "Cd4", alpha = c(0.1, 1.5), pt.size.factor = 1.5)
+p7 <- SpatialFeaturePlot(ntm_bcg_mouse_2_data, features = "Mki67", alpha = c(0.1, 1.5), pt.size.factor = 1.5)
+p8 <- SpatialFeaturePlot(ntm_bcg_mouse_2_data, features = "Cxcr5", alpha = c(0.1, 1.5), pt.size.factor = 1.5)
+
+p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8
+```
+
+## dimensionality reduction and clustering
+
+Clustering is the assignment of objects to homogeneous groups (called clusters) while making sure that objects in different groups are not similar. Clustering is considered an unsupervised task as it aims to describe the hidden structure of the objects.
+
+Dimensionality reduction is a process to reduce the number of features under consideration, where each feature is a dimension that partly represents the objects.
+Why is dimensionality reduction important? As more features are added, the data becomes very sparse and analysis suffers from the curse of dimensionality. Additionally, it is easier to process smaller data sets.
+Dimensionality reduction can be executed using two different methods:
+
+1. Selecting from the existing features (feature selection)
+2. Extracting new features by combining the existing features (feature extraction)
+
+
+```{r, fig.width = 10, fig.height= 10}
+# Mouse 1
+ntm_bcg_mouse_1_analyzed <- RunPCA(ntm_bcg_mouse_1_data, assay = "SCT", verbose = FALSE)
+ntm_bcg_mouse_1_analyzed <- FindNeighbors(ntm_bcg_mouse_1_analyzed, reduction = "pca", dims = 1:5)
+ntm_bcg_mouse_1_analyzed <- FindClusters(ntm_bcg_mouse_1_analyzed, verbose = FALSE, resolution = 0.8)
+ntm_bcg_mouse_1_analyzed <- RunUMAP(ntm_bcg_mouse_1_analyzed, reduction = "pca", dims = 1:5)
+
+# Mouse 2
+ntm_bcg_mouse_2_analyzed <- RunPCA(ntm_bcg_mouse_2_data, assay = "SCT", verbose = FALSE)
+ntm_bcg_mouse_2_analyzed <- FindNeighbors(ntm_bcg_mouse_2_analyzed, reduction = "pca", dims = 1:5)
+ntm_bcg_mouse_2_analyzed <- FindClusters(ntm_bcg_mouse_2_analyzed, verbose = FALSE, resolution = 0.8)
+ntm_bcg_mouse_2_analyzed <- RunUMAP(ntm_bcg_mouse_2_analyzed, reduction = "pca", dims = 1:5)
+```
+
+
+## labelling clusters using SingleR pipeline
+
+```{r}
+# First convert the seurat object to single cell experiment object (otherwise the SingleR pipeline will not work)
+
+# Mouse 1
+ntm_bcg_mouse_1_analyzed.sce <- as.SingleCellExperiment(ntm_bcg_mouse_1_analyzed)
+
+# Mouse 2
+ntm_bcg_mouse_2_analyzed.sce <- as.SingleCellExperiment(ntm_bcg_mouse_2_analyzed)
+
+
+#create reference data
+
+ref.data <- celldex::ImmGenData()
+ref.data
+
+# run singleR pipeline to find the cell types
+
+## Mouse 1
+cell_types_mouse_1 <- SingleR(test=ntm_bcg_mouse_1_analyzed.sce, assay.type.test=1, 
+    ref=ref.data, labels=ref.data$label.main)
+
+## Mouse 2
+cell_types_mouse_2 <- SingleR(test=ntm_bcg_mouse_2_analyzed.sce, assay.type.test=1, 
+    ref=ref.data, labels=ref.data$label.main)
+
+```
+
+## merging metadata of cell types to seurat object
+
+```{r}
+# Mouse 1
+ntm_bcg_mouse_1_analyzed[["ref.data"]] <- cell_types_mouse_1$labels
+
+# Mouse 2
+ntm_bcg_mouse_2_analyzed[["ref.data"]] <- cell_types_mouse_2$labels
+```
+
+## Plot umap and spatial plot to localize each cell type
+
+### Mouse 1
+
+```{r, fig.width = 16, fig.height= 10}
+
+
+remove.packages("Seurat")
+remotes::install_version(package = 'Seurat', version = package_version('4.0.0'))
+library(Seurat)
+
+
+p1 <- DimPlot(ntm_bcg_mouse_1_analyzed, group.by = c("ref.data"), reduction = "umap",label = F, pt.size = 1.5, label.size = 5, cols = my_cols)
+
+p2 <- SpatialDimPlot(ntm_bcg_mouse_1_analyzed, group.by = "ref.data", label = FALSE, label.size = 5, cols = my_cols)
+
+p1 + p2
+```
+
+
+### Mouse 2
+
+```{r, fig.width = 16, fig.height= 10}
+
+p1 <- DimPlot(ntm_bcg_mouse_2_analyzed, group.by = c("ref.data"), reduction = "umap",label = F, pt.size = 1.5, label.size = 5, cols = my_cols)
+
+p2 <- SpatialDimPlot(ntm_bcg_mouse_2_analyzed, group.by = c("ref.data"), label = FALSE, label.size = 5, cols = my_cols)
+
+p1 + p2
+```
+
+## Plot violin plot with top markers associated with B cells and lymphoid follicles
+
+### Mouse 1
+
+```{r, fig.width = 14, fig.height= 12}
+VlnPlot(ntm_bcg_mouse_1_analyzed, group.by = c("ref.data"), features = c("Cxcr5", "Mki67", "Ltb", "Cd38", "Ccr6", "Tnfrsf13c", "Fcrla"), cols =  my_cols)
+
+```
+
+### Mouse 2
+
+```{r, fig.width = 14, fig.height= 12}
+VlnPlot(ntm_bcg_mouse_2_analyzed, group.by = c("ref.data"), features = c("Cxcr5", "Mki67", "Ltb", "Cd38", "Ccr6", "Tnfrsf13c", "Fcrla"), cols =  my_cols)
+```
+
+## find markers in each cluster
+
+### Mouse 1
+```{r}
+
+B_cell_mouse_1 <- FindMarkers(ntm_mouse_1_analyzed, group.by = "ref.data", ident.1 = "B cells", min.pct = 0.25)
+head(B_cell_mouse_1, n = 10)
+write.csv(B_cell_mouse_1, "DATA/bcg_ntm/B_cell_mouse_1.csv")
+
+DC_mouse_1 <- FindMarkers(ntm_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "DC", min.pct = 0.25)
+head(DC_mouse_1, n = 10)
+write.csv(DC_mouse_1, "DATA/bcg_ntm/DC_mouse_1.csv")
+
+Stromal_cells_mouse_1 <- FindMarkers(ntm_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Stromal cells", min.pct = 0.25)
+head(Stromal_cells_mouse_1, n = 10)
+write.csv(Stromal_cells_mouse_1, "DATA/bcg_ntm/Stromal_cells_mouse_1.csv")
+
+
+Endothelial_cells_mouse_1 <- FindMarkers(ntm_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Endothelial cells", min.pct = 0.25)
+head(Endothelial_cells_mouse_1, n = 10)
+write.csv(Endothelial_cells_mouse_1, "DATA/bcg_ntm/Endothelial_cells_mouse_1.csv")
+
+Epithelial_cell_mouse_1 <- FindMarkers(ntm_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Epithelial cells", min.pct = 0.25)
+head(Epithelial_cell_mouse_1, n = 10)
+write.csv(Epithelial_cell_mouse_1, "DATA/bcg_ntm/Epithelial_cell_mouse_1.csv")
+
+Fibroblasts_mouse_1 <- FindMarkers(ntm_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Fibroblasts", min.pct = 0.25)
+head(Fibroblasts_mouse_1, n = 10)
+  write.csv(Fibroblasts_mouse_1, "DATA/bcg_ntm/Fibroblasts_mouse_1.csv")
+  
+Macrophages_mouse_1 <- FindMarkers(ntm_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Macrophages", min.pct = 0.25)
+  head(Macrophages_mouse_1, n = 10)
+write.csv(Macrophages_mouse_1, "DATA/bcg_ntm/Macrophages_mouse_1.csv")
+
+Monocytes_mouse_1 <- FindMarkers(ntm_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Monocytes", min.pct = 0.25)
+  head(Monocytes_mouse_1, n = 10)
+write.csv(Monocytes_mouse_1, "DATA/bcg_ntm/Monocytes_mouse_1.csv")
+
+
+```
+
+### Mouse 2
+```{r}
+
+B_cell_mouse_2 <- FindMarkers(ntm_mouse_2_analyzed, group.by = "ref.data", ident.1 = "B cells", min.pct = 0.25)
+head(B_cell_mouse_2, n = 10)
+write.csv(B_cell_mouse_2, "DATA/bcg_ntm/B_cell_mouse_2.csv")
+
+DC_mouse_2 <- FindMarkers(ntm_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "DC", min.pct = 0.25)
+head(DC_mouse_2, n = 10)
+write.csv(DC_mouse_2, "DATA/bcg_ntm/DC_mouse_2.csv")
+
+Stromal_cells_mouse_2 <- FindMarkers(ntm_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Stromal cells", min.pct = 0.25)
+head(Stromal_cells_mouse_2, n = 10)
+write.csv(Stromal_cells_mouse_2, "DATA/bcg_ntm/Stromal_cells_mouse_2.csv")
+
+
+Endothelial_cells_mouse_2 <- FindMarkers(ntm_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Endothelial cells", min.pct = 0.25)
+head(Endothelial_cells_mouse_2, n = 10)
+write.csv(Endothelial_cells_mouse_2, "DATA/bcg_ntm/Endothelial_cells_mouse_2.csv")
+
+Epithelial_cell_mouse_2 <- FindMarkers(ntm_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Epithelial cells", min.pct = 0.25)
+head(Epithelial_cell_mouse_2, n = 10)
+write.csv(Epithelial_cell_mouse_2, "DATA/bcg_ntm/Epithelial_cell_mouse_2.csv")
+
+Fibroblasts_mouse_2 <- FindMarkers(ntm_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Fibroblasts", min.pct = 0.25)
+head(Fibroblasts_mouse_2, n = 10)
+  write.csv(Fibroblasts_mouse_2, "DATA/bcg_ntm/Fibroblasts_mouse_2.csv")
+  
+Macrophages_mouse_2 <- FindMarkers(ntm_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Macrophages", min.pct = 0.25)
+  head(Macrophages_mouse_2, n = 10)
+write.csv(Macrophages_mouse_2, "DATA/bcg_ntm/Macrophages_mouse_2.csv")
+
+Monocytes_mouse_2 <- FindMarkers(ntm_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Monocytes", min.pct = 0.25)
+  head(Monocytes_mouse_2, n = 10)
+write.csv(Monocytes_mouse_2, "DATA/bcg_ntm/Monocytes_mouse_2.csv")
+
+Neutrophils_mouse_2 <- FindMarkers(ntm_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Neutrophils", min.pct = 0.25)
+  head(Neutrophils_mouse_2, n = 10)
+write.csv(Neutrophils_mouse_2, "DATA/bcg_ntm/Neutrophils_mouse_2.csv")
+```
+
+```{r}
+B_cell_deseq_1 <- FindMarkers(ntm_bcg_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "B cells", test.use = "DESeq2")
+write.csv(B_cell_deseq_1, "DATA/bcg_ntm/B_cell_deseq_mouse1.csv")
+
+B_cell_deseq_2 <- FindMarkers(ntm_bcg_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "B cells", test.use = "DESeq2")
+write.csv(B_cell_deseq_2, "DATA/bcg_ntm/B_cell_deseq_mouse2.csv")
+```
+
+# Gene set enrichment
+
+```{r}
+organism = org.Mm.eg.db
+```
+
+## prepare input data for gene set enrichment
+
+```{r}
+# reading in data from deseq2
+df = read.csv("DATA/bcg_ntm/B_cell_deseq.csv", header=TRUE)
+
+# we want the log2 fold change 
+original_gene_list <- df$avg_log2FC
+
+# name the vector
+names(original_gene_list) <- df$X
+
+# omit any NA values 
+gene_list<-na.omit(original_gene_list)
+
+# sort the list in decreasing order (required for clusterProfiler)
+gene_list = sort(gene_list, decreasing = TRUE)
+```
+
+## Gene set enrichment
+
+```{r}
+#gene set enrichment function for B cell cluster
+
+gse <- gseGO(geneList=gene_list, 
+             ont ="ALL", 
+             keyType = "SYMBOL", 
+             minGSSize = 3, 
+             maxGSSize = 800, 
+             pvalueCutoff = 0.05, 
+             verbose = TRUE, 
+             OrgDb = organism, 
+             pAdjustMethod = "none",
+             eps = 0.0,
+             nPermSimple = 10000)
+
+dotplot(gse, showCategory=10, split=".sign") + facet_grid(.~.sign)
+
+```
+
+## KEGG pathway analysis
+
+```{r}
+# Convert gene IDs for gse to KEGG function
+# We will lose some genes here because not all IDs will be converted
+
+ids<-bitr(names(gene_list), fromType = "SYMBOL", toType = "ENTREZID", OrgDb=organism)
+ 
+# remove duplicate IDS (here I use "ENSEMBL", but it should be whatever was selected as keyType)
+dedup_ids = ids[!duplicated(ids[c("SYMBOL")]),]
+
+# Create a new dataframe df2 which has only the genes which were successfully mapped using the bitr function above
+df2 = df[df$X %in% dedup_ids$SYMBOL,]
+
+# Create a new column in df2 with the corresponding ENTREZ IDs
+df2$Y = dedup_ids$ENTREZID
+
+# Create a vector of the gene unuiverse
+kegg_gene_list <- df2$avg_log2FC
+
+# Name vector with ENTREZ ids
+names(kegg_gene_list) <- df2$Y
+
+# omit any NA values 
+kegg_gene_list<-na.omit(kegg_gene_list)
+
+# sort the list in decreasing order (required for clusterProfiler)
+kegg_gene_list = sort(kegg_gene_list, decreasing = TRUE)
+```
+
+## running kegg
+
+```{r}
+kegg_organism = "mmu"
+kk2 <- gseKEGG(geneList     = kegg_gene_list,
+               organism     = kegg_organism,
+               minGSSize    = 3,
+               maxGSSize    = 800,
+               pvalueCutoff = 0.05,
+               pAdjustMethod = "none",
+               keyType       = "ncbi-geneid",
+               eps = 0.0)
+
+write.csv(kk2, "DATA/bcg_ntm/kk2.csv")
+
+dotplot(kk2, showCategory=, split=".sign") + facet_grid(.~.sign)
+```
+
+
+```{r}
+library(pathview)
+
+# Produce the native KEGG plot (PNG) for first set of genes
+dme <- pathview(gene.data=kegg_gene_list, pathway.id="mmu05417", species = kegg_organism, low = list(gene = "#453781FF"), mid =
+list(gene = "#20A387FF"), high = list(gene = "#FDE725FF"))
+
+# Produce a different plot (PDF) (not displayed here)
+dme <- pathview(gene.data=kegg_gene_list, pathway.id="mmu05417", species = kegg_organism, kegg.native = F, low = list(gene = "#453781FF"), mid =
+list(gene = "#20A387FF"), high = list(gene = "#FDE725FF"))
+
 ```
