@@ -19,7 +19,7 @@ The presented data has four groups:
 
 We have performed [10x spatial visium transciptomics](https://www.10xgenomics.com/support/spatial-gene-expression-ffpe) on formaldehyde-fixed paraffin embedded (FFPE) lung tissues at day 120 post Mtb infection. We have seen lymphoid follicles in lungs of mice vaccinated with BCG, exposed with high concentration of NTM and challenged with Mtb. These lymphoid follicles are correlated with decreased Mtb bacterial burden in the lungs and also with increased B cells and anti-Mtb cell lysate IgA aand IgG antibodies. Therefore, to further evaluate the protection mechanisms, we have performed spatial transcriptomics of lung tissues. 
 
-##### Raw data can be found at NCBI GSE database [GSE203037] (https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE203037)
+##### Raw data can be found at NCBI GSE database [GSE203037](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE203037)
 
 
 
