@@ -239,15 +239,16 @@ ntm_bcg_mouse_2_analyzed[["ref.data"]] <- cell_types_mouse_2$labels
 
 ## Plot umap and spatial plot to localize each cell type
 
+## set the colors of the cell types
+
+```{r}
+my_cols <- c('B cells'='#F8766D','DC'='#39568CFF','Endothelial cells'='#CD9600','Epithelial cells'='#00C19A','Fibroblasts'= "#C77CFF",
+    'Macrophages'='#00A9FF','Monocytes'='#0CB702','Stromal cells'='#FF61CC')
+```
+
 ### Mouse 1
 
 ```{r, fig.width = 16, fig.height= 10}
-
-
-remove.packages("Seurat")
-remotes::install_version(package = 'Seurat', version = package_version('4.0.0'))
-library(Seurat)
-
 
 p1 <- DimPlot(ntm_bcg_mouse_1_analyzed, group.by = c("ref.data"), reduction = "umap",label = F, pt.size = 1.5, label.size = 5, cols = my_cols)
 
@@ -287,39 +288,35 @@ VlnPlot(ntm_bcg_mouse_2_analyzed, group.by = c("ref.data"), features = c("Cxcr5"
 
 ### Mouse 1
 ```{r}
-
-B_cell_mouse_1 <- FindMarkers(ntm_mouse_1_analyzed, group.by = "ref.data", ident.1 = "B cells", min.pct = 0.25)
+B_cell_mouse_1 <- FindMarkers(ntm_bcg_mouse_1_analyzed, group.by = "ref.data", ident.1 = "B cells", min.pct = 0.25)
 head(B_cell_mouse_1, n = 10)
 write.csv(B_cell_mouse_1, "DATA/bcg_ntm/B_cell_mouse_1.csv")
 
-DC_mouse_1 <- FindMarkers(ntm_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "DC", min.pct = 0.25)
+DC_mouse_1 <- FindMarkers(ntm_bcg_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "DC", min.pct = 0.25)
 head(DC_mouse_1, n = 10)
 write.csv(DC_mouse_1, "DATA/bcg_ntm/DC_mouse_1.csv")
 
-Stromal_cells_mouse_1 <- FindMarkers(ntm_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Stromal cells", min.pct = 0.25)
+Stromal_cells_mouse_1 <- FindMarkers(ntm_bcg_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Stromal cells", min.pct = 0.25)
 head(Stromal_cells_mouse_1, n = 10)
 write.csv(Stromal_cells_mouse_1, "DATA/bcg_ntm/Stromal_cells_mouse_1.csv")
 
 
-Endothelial_cells_mouse_1 <- FindMarkers(ntm_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Endothelial cells", min.pct = 0.25)
+Endothelial_cells_mouse_1 <- FindMarkers(ntm_bcg_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Endothelial cells", min.pct = 0.25)
 head(Endothelial_cells_mouse_1, n = 10)
 write.csv(Endothelial_cells_mouse_1, "DATA/bcg_ntm/Endothelial_cells_mouse_1.csv")
 
-Epithelial_cell_mouse_1 <- FindMarkers(ntm_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Epithelial cells", min.pct = 0.25)
+Epithelial_cell_mouse_1 <- FindMarkers(ntm_bcg_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Epithelial cells", min.pct = 0.25)
 head(Epithelial_cell_mouse_1, n = 10)
 write.csv(Epithelial_cell_mouse_1, "DATA/bcg_ntm/Epithelial_cell_mouse_1.csv")
 
-Fibroblasts_mouse_1 <- FindMarkers(ntm_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Fibroblasts", min.pct = 0.25)
+Fibroblasts_mouse_1 <- FindMarkers(ntm_bcg_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Fibroblasts", min.pct = 0.25)
 head(Fibroblasts_mouse_1, n = 10)
   write.csv(Fibroblasts_mouse_1, "DATA/bcg_ntm/Fibroblasts_mouse_1.csv")
   
-Macrophages_mouse_1 <- FindMarkers(ntm_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Macrophages", min.pct = 0.25)
+Macrophages_mouse_1 <- FindMarkers(ntm_bcg_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Macrophages", min.pct = 0.25)
   head(Macrophages_mouse_1, n = 10)
 write.csv(Macrophages_mouse_1, "DATA/bcg_ntm/Macrophages_mouse_1.csv")
 
-Monocytes_mouse_1 <- FindMarkers(ntm_mouse_1_analyzed, group.by = "ref.data",  ident.1 = "Monocytes", min.pct = 0.25)
-  head(Monocytes_mouse_1, n = 10)
-write.csv(Monocytes_mouse_1, "DATA/bcg_ntm/Monocytes_mouse_1.csv")
 
 
 ```
@@ -327,42 +324,36 @@ write.csv(Monocytes_mouse_1, "DATA/bcg_ntm/Monocytes_mouse_1.csv")
 ### Mouse 2
 ```{r}
 
-B_cell_mouse_2 <- FindMarkers(ntm_mouse_2_analyzed, group.by = "ref.data", ident.1 = "B cells", min.pct = 0.25)
+B_cell_mouse_2 <- FindMarkers(ntm_bcg_mouse_2_analyzed, group.by = "ref.data", ident.1 = "B cells", min.pct = 0.25)
 head(B_cell_mouse_2, n = 10)
 write.csv(B_cell_mouse_2, "DATA/bcg_ntm/B_cell_mouse_2.csv")
 
-DC_mouse_2 <- FindMarkers(ntm_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "DC", min.pct = 0.25)
+DC_mouse_2 <- FindMarkers(ntm_bcg_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "DC", min.pct = 0.25)
 head(DC_mouse_2, n = 10)
 write.csv(DC_mouse_2, "DATA/bcg_ntm/DC_mouse_2.csv")
 
-Stromal_cells_mouse_2 <- FindMarkers(ntm_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Stromal cells", min.pct = 0.25)
+Stromal_cells_mouse_2 <- FindMarkers(ntm_bcg_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Stromal cells", min.pct = 0.25)
 head(Stromal_cells_mouse_2, n = 10)
 write.csv(Stromal_cells_mouse_2, "DATA/bcg_ntm/Stromal_cells_mouse_2.csv")
 
 
-Endothelial_cells_mouse_2 <- FindMarkers(ntm_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Endothelial cells", min.pct = 0.25)
+Endothelial_cells_mouse_2 <- FindMarkers(ntm_bcg_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Endothelial cells", min.pct = 0.25)
 head(Endothelial_cells_mouse_2, n = 10)
 write.csv(Endothelial_cells_mouse_2, "DATA/bcg_ntm/Endothelial_cells_mouse_2.csv")
 
-Epithelial_cell_mouse_2 <- FindMarkers(ntm_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Epithelial cells", min.pct = 0.25)
+Epithelial_cell_mouse_2 <- FindMarkers(ntm_bcg_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Epithelial cells", min.pct = 0.25)
 head(Epithelial_cell_mouse_2, n = 10)
 write.csv(Epithelial_cell_mouse_2, "DATA/bcg_ntm/Epithelial_cell_mouse_2.csv")
 
-Fibroblasts_mouse_2 <- FindMarkers(ntm_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Fibroblasts", min.pct = 0.25)
+Fibroblasts_mouse_2 <- FindMarkers(ntm_bcg_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Fibroblasts", min.pct = 0.25)
 head(Fibroblasts_mouse_2, n = 10)
   write.csv(Fibroblasts_mouse_2, "DATA/bcg_ntm/Fibroblasts_mouse_2.csv")
   
-Macrophages_mouse_2 <- FindMarkers(ntm_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Macrophages", min.pct = 0.25)
+Macrophages_mouse_2 <- FindMarkers(ntm_bcg_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Macrophages", min.pct = 0.25)
   head(Macrophages_mouse_2, n = 10)
 write.csv(Macrophages_mouse_2, "DATA/bcg_ntm/Macrophages_mouse_2.csv")
 
-Monocytes_mouse_2 <- FindMarkers(ntm_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Monocytes", min.pct = 0.25)
-  head(Monocytes_mouse_2, n = 10)
-write.csv(Monocytes_mouse_2, "DATA/bcg_ntm/Monocytes_mouse_2.csv")
 
-Neutrophils_mouse_2 <- FindMarkers(ntm_mouse_2_analyzed, group.by = "ref.data",  ident.1 = "Neutrophils", min.pct = 0.25)
-  head(Neutrophils_mouse_2, n = 10)
-write.csv(Neutrophils_mouse_2, "DATA/bcg_ntm/Neutrophils_mouse_2.csv")
 ```
 
 ```{r}
@@ -383,7 +374,7 @@ organism = org.Mm.eg.db
 
 ```{r}
 # reading in data from deseq2
-df = read.csv("DATA/bcg_ntm/B_cell_deseq.csv", header=TRUE)
+df = read.csv("DATA/bcg_ntm/B_cell_deseq_mouse1.csv", header=TRUE)
 
 # we want the log2 fold change 
 original_gene_list <- df$avg_log2FC
